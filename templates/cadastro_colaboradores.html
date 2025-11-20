@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- 🧠 CABEÇALHO + FILTRO -->
+<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-5">
+
+  <!-- TÍTULO -->
+  <div class="flex items-center gap-3">
+    <i class="fas fa-id-badge text-blue-600 text-3xl"></i>
+    <h2 class="text-3xl font-semibold text-gray-800">Cadastro de Funcionários</h2>
+  </div>
+
+  <!-- FILTRO + BOTÃO NOVO -->
+  <div class="flex items-center gap-4">
+
+    <form method="GET" class="flex items-center gap-2">
+
+      <input type="text" id="periodo" name="periodo"
+             value="{{ request.args.get('periodo', '') }}"
+             placeholder="Filtrar por período"
+             class="px-4 py-2 border border-gray-300 rounded-lg w-52 focus:ring focus:ring-blue-300 cursor-pointer text-gray-700">
+
+      <input type="hidden" id="data_inicio" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
+      <input type="hidden" id="data_fim" name="data_fim" value="{{ request.args.get('data_fim','') }}">
+
+      <button type="submit"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow font-semibold">
+        <i class="fas fa-filter mr-1"></i> Filtrar
+      </button>
+
+    </form>
+
+    <button onclick="abrirModalID('modalCadastro')"
+      class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-2 font-semibold text-sm shadow-sm transition-all flex items-center gap-2">
+      <i class="fas fa-user-plus"></i> Novo Funcionário
+    </button>
+
+  </div>
+</div>
+
+{% if request.args.get('data_inicio') and request.args.get('data_fim') %}
+<div class="mb-6 bg-blue-50 border border-blue-300 text-blue-800 px-4 py-3 rounded-lg flex items-center gap-3 shadow-sm">
+
+  <i class="fas fa-filter text-blue-700 text-lg"></i>
+
+  <span class="font-medium">Filtro ativo:</span>
+
+  <span class="text-sm">
+    {{ request.args.get('data_inicio') }} → {{ request.args.get('data_fim') }}
+  </span>
+
+  <a href="{{ url_for('cadastro_funcionarios') }}"
+     class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-semibold shadow">
+     Limpar Filtro
+  </a>
+
+</div>
+{% endif %}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
+<script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+
+<script>
+new Litepicker({
+    element: document.getElementById('periodo'),
+    singleMode: false,
+    numberOfMonths: 2,
+    numberOfColumns: 2,
+    format: 'DD/MM/YYYY',
+    lang: 'pt-BR',
+    autoApply: true,
+    setup: (picker) => {
+        picker.on('selected', (d1, d2) => {
+            document.getElementById('data_inicio').value = d1.format('YYYY-MM-DD');
+            document.getElementById('data_fim').value = d2.format('YYYY-MM-DD');
+        });
+    }
+});
+</script>
+
+<!-- 👥 LISTA DE FUNCIONÁRIOS -->
+<div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+  <div class="flex justify-between items-center mb-6">
+    <h3 class="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+      <i class="fas fa-users text-blue-500"></i> Funcionários Cadastrados
+    </h3>
+    <span class="text-sm text-gray-500">{{ funcionarios|length }} registrados</span>
+  </div>
+
+  {% if funcionarios %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+    {% for f in funcionarios %}
+    <div class="relative bg-white border border-blue-300 rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden w-full max-w-xs mx-auto">
+
+      <!-- TOPO DO CRACHÁ -->
+      <div class="bg-gradient-to-b from-blue-600 to-blue-800 text-white py-6 flex flex-col items-center gap-1 shadow">
+
+          <!-- 🔵 AVATAR AUTOMÁTICO COM INICIAIS -->
+          <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center shadow-md text-3xl font-bold uppercase select-none">
+            {{ f.nome.split()[0][0] }}{{ f.nome.split()[-1][0] }}
+          </div>
+
+          <h4 class="text-lg font-bold tracking-wide mt-2">{{ f.nome }}</h4>
+          <p class="text-blue-100 text-sm font-medium">{{ f.setor }}</p>
+
+          <span class="mt-2 px-3 py-1 bg-white/20 border border-white/30 rounded-md text-xs font-semibold tracking-wider">
+            MATRÍCULA: {{ f.matricula }}
+          </span>
+
+      </div>
+
+      <!-- CORPO -->
+      <div class="p-5 text-gray-700 text-sm space-y-4">
+
+        <div class="border-l-4 border-blue-600 pl-3">
+          <p class="text-xs text-gray-500 font-semibold">Admissão</p>
+          <p class="font-medium text-gray-800">
+            {% if f.data_admissao %}
+              {% if f.data_admissao.__class__.__name__ == 'datetime' %}
+                {{ f.data_admissao.strftime('%d/%m/%Y') }}
+              {% else %}
+                {{ f.data_admissao }}
+              {% endif %}
+            {% else %}-{% endif %}
+          </p>
+        </div>
+
+      {% if not f.senha_validacao %}
+      <form method="POST" action="{{ url_for('definir_senha_funcionario', id=f.id) }}" class="pt-2">
+
+        <label class="block text-xs text-gray-600 mb-1 font-semibold">Definir senha de validação</label>
+
+        <div class="relative flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400">
+
+          <input type="password" id="senha_{{ f.id }}" name="senha_validacao"
+                 required placeholder="Senha do funcionário"
+                 class="px-3 py-2 w-full text-gray-800 outline-none">
+
+          <button type="button" onclick="toggleSenha('{{ f.id }}')"
+            class="px-3 text-gray-500 hover:text-blue-500">
+            <i class="fas fa-eye"></i>
+          </button>
+
+          <button type="submit"
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-semibold">
+            <i class="fas fa-check"></i>
+          </button>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-1 italic">Usada para confirmar entregas de EPI</p>
+      </form>
+
+      {% else %}
+      <div class="mt-3 bg-green-50 p-3 rounded-lg border border-green-200 text-center text-sm text-green-700">
+        <i class="fas fa-lock mr-1"></i> Senha configurada
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- RODAPÉ -->
+    <div class="flex justify-between items-center px-5 py-3 border-t border-gray-200 bg-gray-50">
+
+      <button onclick="abrirModalID('modalEditar{{ f.id }}')"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
+        <i class="fas fa-edit"></i> Editar
+      </button>
+
+      <a href="{{ url_for('ficha_epi', funcionario_id=f.id,
+                          data_inicio=request.args.get('data_inicio'),
+                          data_fim=request.args.get('data_fim')) }}"
+        target="_blank"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
+        <i class="fas fa-file-pdf"></i> Ficha de EPI
+      </a>
+
+      <a href="{{ url_for('deletar_funcionario', id=f.id) }}"
+        onclick="return confirm('Deseja excluir este funcionário?')"
+        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
+        <i class="fas fa-trash"></i> Excluir
+      </a>
+
+    </div>
+
+  </div>
+
+  <!-- MODAL EDITAR (inalterado) -->
+  <div id="modalEditar{{ f.id }}" class="modal fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center z-50 backdrop-blur-sm">
+
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-xl p-8 w-full max-w-3xl animate-fadeIn"
+         onclick="event.stopPropagation()">
+
+      <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-3">
+        <h3 class="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+          <i class="fas fa-user-edit text-blue-600"></i> Editar Funcionário
+        </h3>
+
+        <button onclick="fecharModalID('modalEditar{{ f.id }}')" class="text-gray-500 hover:text-red-500 text-xl">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form method="POST" action="{{ url_for('editar_funcionario', id=f.id) }}"
+            class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <div>
+          <label class="block text-gray-700 text-sm mb-1">Nome completo</label>
+          <input type="text" name="nome" required value="{{ f.nome }}"
+                 class="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 w-full text-gray-800 focus:ring-2 focus:ring-blue-300">
+        </div>
+
+        <div>
+          <label class="block text-gray-700 text-sm mb-1">Matrícula</label>
+          <input type="text" name="matricula" required value="{{ f.matricula }}"
+                 class="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 w-full text-gray-800 focus:ring-2 focus:ring-blue-300">
+        </div>
+
+        <div>
+          <label class="block text-gray-700 text-sm mb-1">Setor</label>
+          <input type="text" name="setor" required value="{{ f.setor }}"
+                 class="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 w-full text-gray-800 focus:ring-2 focus:ring-blue-300">
+        </div>
+
+        <div>
+          <label class="block text-gray-700 text-sm mb-1">Data de admissão</label>
+          <input type="date" name="data_admissao" required
+            value="{% if f.data_admissao.__class__.__name__ == 'datetime' %}
+                      {{ f.data_admissao.strftime('%Y-%m-%d') }}
+                   {% else %}
+                      {{ f.data_admissao }}
+                   {% endif %}"
+            class="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 w-full text-gray-800 focus:ring-2 focus:ring-blue-300">
+        </div>
+
+        <div class="md:col-span-2 flex justify-end gap-4 mt-5">
+          <button type="button" onclick="fecharModalID('modalEditar{{ f.id }}')"
+            class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg px-6 py-2 font-medium text-sm transition">
+            Cancelar
+          </button>
+
+          <button type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-8 py-2 font-semibold text-sm shadow-md">
+            Salvar Alterações
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  {% endfor %}
+  </div>
+
+  {% else %}
+  <p class="text-gray-500 italic text-center py-6">Nenhum funcionário cadastrado.</p>
+  {% endif %}
+</div>
+
+<!-- MODAL CADASTRO -->
+<div id="modalCadastro"
+     class="modal fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center z-50 backdrop-blur-sm">
+
+  <div class="bg-white border border-gray-200 rounded-2xl shadow-xl p-8 w-full max-w-3xl animate-fadeIn">
+
+    <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-3">
+      <h3 class="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+        <i class="fas fa-user-plus text-blue-600"></i> Novo Funcionário
+      </h3>
+
+      <button onclick="fecharModalID('modalCadastro')" class="text-gray-500 hover:text-red-500 text-xl">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form method="POST" action="{{ url_for('cadastro_funcionarios') }}"
+          class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <div>
+        <label class="block text-gray-700 text-sm mb-1">Nome completo</label>
+        <input type="text" name="nome" required placeholder="Ex: Lucas Martins"
+          class="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 w-full text-gray-800 focus:ring-2 focus:ring-blue-300">
+      </div>
+
+      <div>
+        <label class="block text-gray-700 text-sm mb-1">Matrícula</label>
+        <input type="text" name="matricula" required placeholder="Ex: 025"
+          class="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 w-full text-gray-800 focus:ring-2 focus:ring-blue-300">
+      </div>
+
+      <div>
+        <label class="block text-gray-700 text-sm mb-1">Setor</label>
+        <input type="text" name="setor" required placeholder="Ex: Técnico de Campo"
+          class="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 w-full text-gray-800 focus:ring-2 focus:ring-blue-300">
+      </div>
+
+      <div>
+        <label class="block text-gray-700 text-sm mb-1">Data de admissão</label>
+        <input type="date" name="data_admissao" required
+          class="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 w-full text-gray-800 focus:ring-2 focus:ring-blue-300">
+      </div>
+
+      <div class="md:col-span-2 flex justify-end mt-5 gap-4">
+        <button type="button" onclick="fecharModalID('modalCadastro')"
+          class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg px-6 py-2 font-medium text-sm transition">
+          Cancelar
+        </button>
+
+        <button type="submit"
+          class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-8 py-2 font-semibold text-sm shadow-md">
+          Salvar Funcionário
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+<script>
+function abrirModalID(id){
+  const el = document.getElementById(id);
+  if(el){ el.classList.remove("hidden"); el.classList.add("flex"); }
+}
+function fecharModalID(id){
+  const el = document.getElementById(id);
+  if(el){ el.classList.add("hidden"); el.classList.remove("flex"); }
+}
+window.addEventListener("click", function(e){
+  document.querySelectorAll(".modal").forEach(modal=>{
+    if(e.target === modal){
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+  });
+});
+function toggleSenha(id){
+  const campo = document.getElementById("senha_"+id);
+  campo.type = campo.type === "password" ? "text" : "password";
+}
+</script>
+
+<style>
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fadeIn { animation: fadeIn .25s ease-out forwards; }
+</style>
+
+{% endblock %}

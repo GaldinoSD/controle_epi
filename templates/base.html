@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title or "Controle de EPI – Sistema Corporativo" }}</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+
+
+  <!-- Tailwind -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/a2e0e9b2e4.js" crossorigin="anonymous"></script><!-- FAVICON COMPLETO -->
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+<!-- PNG para maior compatibilidade -->
+<link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}">
+<link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon-64.png') }}">
+
+<!-- iPhone / Android -->
+<link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon-180.png') }}">
+<link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='favicon-192.png') }}">
+
+
+  <!-- Fonte profissional -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --header-bg: #ffffff;
+      --panel: #ffffff;
+      --border: #e3e6ea;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #2d6cdf;
+      --accent-light: #e8f0ff;
+      --radius: 10px;
+      --shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    body {
+      background: var(--bg);
+      margin: 0;
+      padding: 0;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      letter-spacing: 0.1px;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      height: 64px;        /* 🔥 Mantém a barra fixa */
+      min-height: 64px;
+      overflow: hidden;
+
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* 🔥 LOGO MAIOR SEM AUMENTAR A BARRA */
+    .brand img {
+      height: 70px;         /* tamanho grande */
+      max-height: 70px;
+      object-fit: contain;
+      margin-top: -10px;    /* ajuste para não expandir a barra */
+    }
+
+    /* NAVIGATION */
+    nav {
+      display: flex;
+      gap: 1.4rem;
+    }
+
+    nav a {
+      color: var(--muted);
+      font-weight: 500;
+      padding-bottom: 4px;
+      transition: 0.25s ease;
+      position: relative;
+    }
+
+    nav a.active {
+      color: var(--accent);
+    }
+
+    nav a.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -3px;
+      width: 100%;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 4px;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+    }
+
+    /* SAIR BUTTON */
+    .btn-sair {
+      border: 1px solid var(--border);
+      padding: 0.45rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: 0.25s;
+      background: white;
+    }
+    .btn-sair:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    /* MAIN */
+    main {
+      padding: 2.8rem 2rem;
+      min-height: 85vh;
+    }
+
+    /* FOOTER */
+    footer {
+      background: var(--header-bg);
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 1.2rem;
+      color: var(--muted);
+      font-size: .85rem;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.03);
+    }
+
+    footer span {
+      color: var(--accent);
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+      <!-- Título removido conforme solicitado -->
+    </div>
+
+    <nav>
+
+      <!-- Sempre visível para todos -->
+      <a href="{{ url_for('dashboard') }}"
+         class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+         Dashboard
+      </a>
+
+      <!-- VISÍVEL PARA ESTOQUISTA E ADMIN -->
+      {% if current_user.role in ['estoquista', 'admin'] %}
+        <a href="{{ url_for('epis') }}"
+           class="{% if request.endpoint == 'epis' %}active{% endif %}">
+           Estoque de EPIs
+        </a>
+
+        <a href="{{ url_for('entregas') }}"
+           class="{% if request.endpoint == 'entregas' %}active{% endif %}">
+           Entregas
+        </a>
+      {% endif %}
+
+      <!-- VISÍVEL APENAS PARA ADMIN -->
+      {% if current_user.role == 'admin' %}
+
+        <a href="{{ url_for('cadastro_funcionarios') }}"
+           class="{% if request.endpoint == 'cadastro_funcionarios' %}active{% endif %}">
+           Colaboradores
+        </a>
+
+        <a href="{{ url_for('logs') }}"
+           class="{% if request.endpoint == 'logs' %}active{% endif %}">
+           Logs
+        </a>
+
+        <a href="{{ url_for('usuarios') }}"
+           class="{% if request.endpoint == 'usuarios' %}active{% endif %}">
+           Usuários
+        </a>
+
+      {% endif %}
+
+    </nav>
+
+    <div class="flex items-center gap-4">
+      <span class="text-xs text-gray-500 hidden sm:block font-medium">
+        👤 {{ current_user.nome }}
+      </span>
+      <a href="{{ url_for('logout') }}" class="btn-sair">
+        <i class="fas fa-power-off mr-1"></i> Sair
+      </a>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    © 2025 <span>Sistema Corporativo</span> — Módulo de EPI • Desenvolvido por <span>VERSYTEC</span>
+  </footer>
+
+</body>
+</html>

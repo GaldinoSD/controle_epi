@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-6xl mx-auto">
+
+  <!-- ===================== TÍTULO ===================== -->
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-3xl font-semibold text-gray-800 flex items-center gap-3">
+      <i class="fas fa-clipboard-list text-blue-600 text-3xl"></i>
+      Logs do Sistema
+    </h2>
+  </div>
+
+  <p class="text-gray-600 mb-4">Acompanhe todas as ações registradas dentro do sistema.</p>
+
+  <!-- ===================== FILTROS (Texto + Período) ===================== -->
+  <form method="get"
+        class="mb-6 bg-white border border-gray-200 rounded-xl shadow-sm p-4 flex flex-col sm:flex-row sm:items-end gap-4">
+
+    <!-- BUSCA TEXTO -->
+    <div class="flex flex-col w-full sm:w-72">
+      <label class="text-sm text-gray-600 font-medium mb-1">Buscar</label>
+      <div class="relative">
+        <input
+          id="filtro"
+          type="text"
+          name="busca"
+          placeholder="Filtrar logs..."
+          value="{{ request.args.get('busca', '') }}"
+          class="bg-white border border-gray-300 text-gray-800 px-4 py-2 rounded-lg w-full focus:ring-2 focus:ring-blue-400 outline-none shadow-sm transition"
+        >
+        <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+      </div>
+    </div>
+
+    <!-- PERÍODO -->
+    <div class="flex flex-col w-full sm:w-72">
+      <label class="text-sm text-gray-600 font-medium mb-1">Período</label>
+      <input
+        id="periodo"
+        type="text"
+        placeholder="Escolha o período"
+        class="border border-gray-300 rounded-lg px-3 py-2 text-gray-800 focus:ring-2 focus:ring-blue-400"
+      >
+
+      <!-- Inputs que vão para o back-end -->
+      <input type="hidden" id="data_inicio" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
+      <input type="hidden" id="data_fim" name="data_fim" value="{{ request.args.get('data_fim','') }}">
+    </div>
+
+    <!-- BOTÃO -->
+    <button type="submit"
+      class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow font-medium h-[42px] sm:h-auto">
+      <i class="fas fa-filter mr-1"></i> Aplicar
+    </button>
+
+  </form>
+
+
+  <!-- ===================== TABELA ===================== -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 overflow-x-auto">
+
+    <table id="tabelaLogs" class="w-full text-left text-sm text-gray-700">
+
+      <thead>
+        <tr class="bg-gray-100 text-gray-600 uppercase tracking-wide text-xs border-b border-gray-200">
+          <th class="py-3 px-3">Data / Hora</th>
+          <th class="py-3 px-3">Usuário</th>
+          <th class="py-3 px-3">Ação</th>
+        </tr>
+      </thead>
+
+      <tbody class="divide-y divide-gray-100">
+
+        {% if logs %}
+          {% for log in logs %}
+          <tr class="hover:bg-blue-50 transition">
+
+            <!-- DATA -->
+            <td class="py-3 px-3 text-gray-600">
+              {{ log.data_hora.strftime('%d/%m/%Y %H:%M:%S') }}
+            </td>
+
+            <!-- USUÁRIO -->
+            <td class="py-3 px-3 font-semibold text-blue-600 flex items-center gap-2">
+              <i class="fas fa-user-circle text-blue-500"></i>
+              {{ log.usuario }}
+            </td>
+
+            <!-- AÇÃO CLASSIFICADA -->
+            <td class="py-3 px-3">
+              {% set text = log.acao.lower() %}
+
+              {% if "criado" in text or "cadastrou" in text %}
+                <span class="text-green-600 font-medium flex items-center gap-2">
+                  <i class="fas fa-plus-circle"></i> {{ log.acao }}
+                </span>
+
+              {% elif "exclu" in text %}
+                <span class="text-red-600 font-medium flex items-center gap-2">
+                  <i class="fas fa-trash-alt"></i> {{ log.acao }}
+                </span>
+
+              {% elif "edit" in text or "alter" in text %}
+                <span class="text-yellow-600 font-medium flex items-center gap-2">
+                  <i class="fas fa-edit"></i> {{ log.acao }}
+                </span>
+
+              {% elif "login" in text %}
+                <span class="text-blue-600 font-medium flex items-center gap-2">
+                  <i class="fas fa-sign-in-alt"></i> Login no sistema
+                </span>
+
+              {% elif "saiu" in text or "logout" in text %}
+                <span class="text-indigo-600 font-medium flex items-center gap-2">
+                  <i class="fas fa-sign-out-alt"></i> Logout
+                </span>
+
+              {% else %}
+                <span class="text-gray-700">{{ log.acao }}</span>
+              {% endif %}
+            </td>
+
+          </tr>
+          {% endfor %}
+
+        {% else %}
+          <tr>
+            <td colspan="3" class="py-4 text-center text-gray-500 italic">
+              Nenhum log registrado no período selecionado.
+            </td>
+          </tr>
+        {% endif %}
+
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+
+<!-- ===================== SCRIPT — FILTRO POR TEXTO ===================== -->
+<script>
+document.getElementById("filtro").addEventListener("keyup", function () {
+  const termo = this.value.toLowerCase();
+  const linhas = document.querySelectorAll("#tabelaLogs tbody tr");
+
+  linhas.forEach(linha => {
+    const texto = linha.innerText.toLowerCase();
+    linha.style.display = texto.includes(termo) ? "" : "none";
+  });
+});
+</script>
+
+
+<!-- ===================== LITEPICKER ===================== -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css" />
+<script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+
+<script>
+const picker = new Litepicker({
+    element: document.getElementById('periodo'),
+    singleMode: false,
+    format: 'DD/MM/YYYY',
+    lang: 'pt-BR',
+    numberOfMonths: 2,
+    numberOfColumns: 2,
+    autoApply: true,
+
+    setup: (picker) => {
+      picker.on('selected', (start, end) => {
+        document.getElementById('data_inicio').value = start.format('YYYY-MM-DD');
+        document.getElementById('data_fim').value = end.format('YYYY-MM-DD');
+      });
+    }
+});
+</script>
+
+{% endblock %}

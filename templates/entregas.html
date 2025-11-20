@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Entregas de EPI{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto p-6">
+
+  <!-- 🔷 TÍTULO -->
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+      <i class="fas fa-box text-blue-600"></i>
+      Controle de Entregas de EPI
+    </h1>
+
+    <!-- 🔵 BOTÃO RELATÓRIOS -->
+    <button onclick="abrirRelatorios()"
+            class="bg-gray-700 hover:bg-gray-800 text-white px-5 py-2 rounded-lg shadow flex items-center gap-2">
+      <i class="fas fa-file-alt"></i> Relatórios
+    </button>
+  </div>
+
+
+  <!-- 🔍 FILTROS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+
+  <form method="get"
+        class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+
+    <!-- FILTRO COLABORADOR -->
+    <input type="text" name="colaborador"
+           value="{{ request.args.get('colaborador', '') }}"
+           placeholder="Filtrar por colaborador"
+           class="p-2 border border-gray-300 rounded-lg w-full focus:ring focus:ring-blue-200">
+
+    <!-- FILTRO EPI -->
+    <input type="text" name="epi"
+           value="{{ request.args.get('epi', '') }}"
+           placeholder="Filtrar por EPI"
+           class="p-2 border border-gray-300 rounded-lg w-full focus:ring focus:ring-blue-200">
+
+    <!-- 🔵 PERÍODO -->
+    <input type="text" id="periodo" name="periodo"
+           value="{{ request.args.get('periodo', '') }}"
+           placeholder="Selecione o período"
+           class="p-2 border border-gray-300 rounded-lg w-full focus:ring focus:ring-blue-200">
+
+    <!-- BOTÃO -->
+    <button type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm">
+      <i class="fas fa-search mr-1"></i> Filtrar
+    </button>
+
+    <!-- INPUTS HIDDEN -->
+    <input type="hidden" id="data_inicio" name="data_inicio" value="{{ request.args.get('data_inicio', '') }}">
+    <input type="hidden" id="data_fim" name="data_fim" value="{{ request.args.get('data_fim', '') }}">
+  </form>
+
+  
+  <!-- SCRIPT LITEPICKER -->
+  <script>
+    new Litepicker({
+        element: document.getElementById('periodo'),
+        singleMode: false,
+        numberOfMonths: 2,
+        numberOfColumns: 2,
+        format: 'DD/MM/YYYY',
+        lang: 'pt-BR',
+        autoApply: true,
+
+        setup: (picker) => {
+            picker.on('selected', (d1, d2) => {
+                document.getElementById('data_inicio').value = d1.format('YYYY-MM-DD');
+                document.getElementById('data_fim').value = d2.format('YYYY-MM-DD');
+            });
+        }
+    });
+  </script>
+
+
+  <!-- 📦 TABELA PRINCIPAL -->
+  <div class="overflow-x-auto bg-white border border-gray-200 shadow-sm rounded-xl">
+    <table class="min-w-full text-sm text-gray-700">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr class="text-gray-600 uppercase text-xs">
+          <th class="py-3 px-4 text-left">Data</th>
+          <th class="py-3 px-4 text-left">Colaborador</th>
+          <th class="py-3 px-4 text-left">EPI</th>
+          <th class="py-3 px-4 text-center">Qtd</th>
+          <th class="py-3 px-4 text-center">Status</th>
+          <th class="py-3 px-4 text-left">Entregue por</th>
+          <th class="py-3 px-4 text-center">Ações</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for e in entregas %}
+        <tr class="border-t border-gray-100 hover:bg-gray-50 transition">
+
+          <td class="py-3 px-4">{{ e.data_entrega.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td class="py-3 px-4 font-medium">{{ e.funcionario.nome }}</td>
+          <td class="py-3 px-4">{{ e.epi.nome }}</td>
+          <td class="py-3 px-4 text-center font-semibold">{{ e.quantidade }}</td>
+
+          <!-- STATUS -->
+          <td class="py-3 px-4 text-center">
+            {% if e.status == 'entregue' %}
+              <span class="bg-green-100 text-green-700 px-3 py-1 rounded text-xs font-semibold">Entregue</span>
+            {% elif e.status == 'devolvido' %}
+              <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded text-xs font-semibold">Devolvido</span>
+            {% elif e.status == 'descartado' %}
+              <span class="bg-red-100 text-red-600 px-3 py-1 rounded text-xs font-semibold">Descartado</span>
+            {% endif %}
+          </td>
+
+          <td class="py-3 px-4 text-gray-600">{{ e.entregue_por or "-" }}</td>
+
+          <td class="py-3 px-4 text-center flex justify-center gap-2 flex-wrap">
+
+            {% if e.status == 'entregue' and e.quantidade > 0 %}
+              <!-- DEVOLVER -->
+              <button onclick="confirmarDevolucao({{ e.id }}, {{ e.quantidade }})"
+                      class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs shadow-sm">
+                <i class="fas fa-undo"></i> Devolver
+              </button>
+
+              <!-- DESCARTAR -->
+              <button onclick="confirmarDescarte({{ e.id }}, {{ e.quantidade }})"
+                      class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs shadow-sm">
+                <i class="fas fa-trash"></i> Descartar
+              </button>
+            {% endif %}
+
+            <a href="{{ url_for('ficha_epi', funcionario_id=e.funcionario.id) }}" target="_blank"
+               class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs shadow-sm">
+              <i class="fas fa-file-pdf"></i> PDF
+            </a>
+
+          </td>
+
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="py-4 text-center text-gray-500 italic">Nenhuma entrega encontrada.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+
+    </table>
+  </div>
+</div>
+
+
+<!-- ===========================
+     MODAL RELATÓRIOS
+=========================== -->
+<div id="modalRelatorios" 
+     class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center"
+     onclick="fecharAoClicarFora(event)">
+
+  <div class="bg-white shadow-xl rounded-xl w-full max-w-6xl p-6 relative"
+       onclick="event.stopPropagation();">
+
+    <button onclick="fecharRelatorios()" 
+            class="absolute right-4 top-4 text-gray-500 hover:text-red-500 text-2xl">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+      <i class="fas fa-file-alt text-blue-600"></i> Relatório Completo de Movimentações
+    </h2>
+
+    <div class="overflow-y-auto max-h-[65vh] border border-gray-200 rounded-xl">
+      <table class="min-w-full text-sm text-gray-700">
+        <thead class="bg-gray-50 text-gray-600 uppercase text-xs border-b">
+          <tr>
+            <th class="py-2 px-3">Data</th>
+            <th class="py-2 px-3">Colaborador</th>
+            <th class="py-2 px-3">EPI</th>
+            <th class="py-2 px-3 text-center">Qtd</th>
+            <th class="py-2 px-3 text-center">Status</th>
+            <th class="py-2 px-3">Responsável</th>
+            <th class="py-2 px-3 text-center">PDF</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for h in historico %}
+          <tr class="border-t hover:bg-gray-100 transition">
+
+            <td class="py-2 px-3">{{ h.data_entrega.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td class="py-2 px-3">{{ h.funcionario.nome }}</td>
+            <td class="py-2 px-3">{{ h.epi.nome }}</td>
+
+            <td class="py-2 px-3 text-center font-semibold">{{ h.quantidade }}</td>
+
+            <td class="py-2 px-3 text-center">
+              {% if h.status == 'entregue' %}
+                <span class="text-green-600 font-bold">Entregue</span>
+              {% elif h.status == 'devolvido' %}
+                <span class="text-yellow-600 font-bold">Devolvido</span>
+              {% else %}
+                <span class="text-red-600 font-bold">Descartado</span>
+              {% endif %}
+            </td>
+
+            <td class="py-2 px-3">{{ h.entregue_por or "-" }}</td>
+
+            <!-- BOTÃO DE PDF -->
+            <td class="py-2 px-3 text-center">
+              <a href="{{ url_for('pdf_movimentacao', entrega_id=h.id) }}"
+                 target="_blank"
+                 class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs shadow flex items-center gap-1 justify-center">
+                <i class="fas fa-file-pdf"></i> PDF
+              </a>
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- JS MODAIS -->
+<script>
+function abrirRelatorios() {
+  document.getElementById("modalRelatorios").classList.remove("hidden");
+}
+function fecharRelatorios() {
+  document.getElementById("modalRelatorios").classList.add("hidden");
+}
+function fecharAoClicarFora(event) {
+  const modal = document.getElementById("modalRelatorios");
+  if (event.target === modal) fecharRelatorios();
+}
+</script>
+
+<!-- SweetAlert -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+/* ============================
+   DEVOLVER COM QUANTIDADE
+============================ */
+async function confirmarDevolucao(id, maxQty) {
+  const { value: qtd } = await Swal.fire({
+    title: "Quantidade a devolver",
+    input: "number",
+    inputLabel: `Máximo: ${maxQty}`,
+    inputAttributes: { min: 1, max: maxQty },
+    inputValue: maxQty,
+    showCancelButton: true,
+    confirmButtonText: "Confirmar",
+    cancelButtonText: "Cancelar"
+  });
+
+  if (!qtd) return;
+
+  const res = await fetch(`/devolver_epi/${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ quantidade: qtd })
+  });
+
+  const data = await res.json();
+  if (data.status === "ok") location.reload();
+}
+
+/* ============================
+   DESCARTAR COM QUANTIDADE
+============================ */
+async function confirmarDescarte(id, maxQty) {
+  const { value: qtd } = await Swal.fire({
+    title: "Quantidade a descartar",
+    input: "number",
+    inputLabel: `Máximo: ${maxQty}`,
+    inputAttributes: { min: 1, max: maxQty },
+    inputValue: maxQty,
+    showCancelButton: true,
+    confirmButtonText: "Confirmar",
+    cancelButtonText: "Cancelar"
+  });
+
+  if (!qtd) return;
+
+  const res = await fetch(`/descartar_epi/${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ quantidade: qtd })
+  });
+
+  const data = await res.json();
+  if (data.status === "ok") location.reload();
+}
+</script>
+
+{% endblock %}

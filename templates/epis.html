@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- 🔷 CABEÇALHO -->
+<h2 class="text-2xl font-semibold mb-8 text-gray-800 flex items-center justify-between">
+  <span class="flex items-center gap-2">
+    <i class="fas fa-warehouse text-blue-600"></i>
+    Painel de Estoque de EPIs
+  </span>
+
+  <div class="flex gap-3">
+    <button onclick="abrirModal('modalEntrega')"
+      class="bg-green-600 hover:bg-green-700 text-white rounded-lg px-6 py-2 font-medium shadow-sm flex items-center gap-2 transition">
+      <i class="fas fa-hand-holding-box"></i> Entregar EPI
+    </button>
+
+    <button onclick="abrirModal('modalCadastro')"
+      class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-2 font-medium shadow-sm flex items-center gap-2 transition">
+      <i class="fas fa-plus-circle"></i> Novo EPI
+    </button>
+  </div>
+</h2>
+
+<!-- 🔹 INDICADORES -->
+<div class="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-8">
+  <div class="bg-white border border-gray-200 p-5 rounded-xl shadow-sm hover:shadow-md transition">
+    <h4 class="text-sm text-gray-500 flex items-center gap-2">
+      <i class="fas fa-box text-blue-500"></i> Total de EPIs
+    </h4>
+    <p class="text-3xl font-bold text-gray-800">{{ epis|length }}</p>
+  </div>
+
+  <div class="bg-white border border-yellow-200 p-5 rounded-xl shadow-sm hover:shadow-md transition">
+    <h4 class="text-sm text-gray-600 flex items-center gap-2">
+      <i class="fas fa-exclamation-triangle text-yellow-500"></i> Estoque em Atenção
+    </h4>
+    <p class="text-3xl font-bold text-yellow-600">
+      {{ epis | selectattr('quantidade', 'le', 15) | list | length }}
+    </p>
+  </div>
+
+  <div class="bg-white border border-red-200 p-5 rounded-xl shadow-sm hover:shadow-md transition">
+    <h4 class="text-sm text-gray-600 flex items-center gap-2">
+      <i class="fas fa-times-circle text-red-500"></i> Itens em Falta
+    </h4>
+    <p class="text-3xl font-bold text-red-600">
+      {{ epis | selectattr('quantidade', 'le', 5) | list | length }}
+    </p>
+  </div>
+
+  <div class="bg-white border border-gray-200 p-5 rounded-xl shadow-sm hover:shadow-md transition">
+    <h4 class="text-sm text-gray-500 flex items-center gap-2">
+      <i class="fas fa-clock text-purple-500"></i> CA a Vencer
+    </h4>
+    <p class="text-3xl font-bold text-purple-600">
+      {{ epis | selectattr('validade_ca', 'defined') | list | length }}
+    </p>
+  </div>
+</div>
+
+<!-- 📦 LISTA DE EPIs -->
+<div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+
+  <!-- TÍTULO + BUSCA -->
+  <div class="flex justify-between items-center mb-5">
+
+    <h3 class="text-xl font-semibold text-gray-700 flex items-center gap-2">
+      <i class="fas fa-boxes text-blue-600"></i> Estoque Atual
+    </h3>
+
+    <div class="flex items-center gap-3">
+
+      <!-- 🔍 CAMPO DE BUSCA -->
+      <input id="filtroBusca" type="text" placeholder="Buscar EPI..."
+        class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-48 focus:ring-blue-300 focus:ring outline-none"
+        onkeyup="filtrarEPIs()">
+
+      <span class="text-sm text-gray-500">{{ epis|length }} itens</span>
+
+    </div>
+
+  </div>
+
+  {% if epis %}
+  <div class="overflow-x-auto">
+    <table id="tabelaEPIs" class="w-full text-left border-collapse text-sm">
+      <thead>
+        <tr class="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase text-xs">
+          <th class="py-3 px-4">Código</th>
+          <th class="py-3 px-4">Nome</th>
+          <th class="py-3 px-4 text-center">CA / Validade</th>
+          <th class="py-3 px-4 text-center">Qtd</th>
+          <th class="py-3 px-4 text-center">Status</th>
+          <th class="py-3 px-4 text-center">Nível</th>
+          <th class="py-3 px-4 text-right">Ações</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for epi in epis %}
+        <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+
+          <td class="py-3 px-4 text-gray-700 font-medium">
+            {{ epi.codigo_produto or '-' }}
+          </td>
+
+          <td class="py-3 px-4 font-medium text-gray-800">{{ epi.nome }}</td>
+
+          <td class="py-3 px-4 text-center text-gray-600">
+            {{ epi.numero_ca or '-' }}<br>
+            <span class="text-gray-400 text-xs">
+              {% if epi.validade_ca %}
+                {% if epi.validade_ca.__class__.__name__ == 'datetime' %}
+                  {{ epi.validade_ca.strftime('%d/%m/%Y') }}
+                {% else %}
+                  {{ epi.validade_ca }}
+                {% endif %}
+              {% else %}-{% endif %}
+            </span>
+          </td>
+
+          <td class="py-3 px-4 text-center font-semibold text-gray-700">
+            {{ epi.quantidade }}
+          </td>
+
+          <td class="py-3 px-4 text-center">
+            {% if epi.quantidade <= 5 %}
+              <span class="bg-red-100 text-red-600 px-3 py-1 rounded text-xs font-semibold">Baixo</span>
+            {% elif epi.quantidade <= 15 %}
+              <span class="bg-yellow-100 text-yellow-600 px-3 py-1 rounded text-xs font-semibold">Atenção</span>
+            {% else %}
+              <span class="bg-green-100 text-green-600 px-3 py-1 rounded text-xs font-semibold">Normal</span>
+            {% endif %}
+          </td>
+
+          <td class="py-3 px-4 text-center">
+            {% set perc = (epi.quantidade / 50 * 100) if epi.quantidade < 50 else 100 %}
+            <div class="w-28 bg-gray-200 h-2 rounded-full overflow-hidden">
+              <div class="h-2 rounded-full bg-gradient-to-r from-blue-400 to-blue-600"
+                   style="width: {{ perc }}%"></div>
+            </div>
+            <span class="text-xs text-gray-500">{{ perc|round(0) }}%</span>
+          </td>
+
+          <td class="py-3 px-4 text-right flex justify-end gap-2">
+
+            <button onclick="abrirModal('modalEditar{{ epi.id }}')"
+              class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs flex items-center gap-1">
+              <i class="fas fa-edit"></i> Editar
+            </button>
+
+            <button onclick="abrirModal('modalHistorico{{ epi.id }}')"
+              class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-xs flex items-center gap-1">
+              <i class="fas fa-history"></i> Histórico
+            </button>
+
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+    <p class="text-gray-400 italic text-center py-6">Nenhum EPI cadastrado.</p>
+  {% endif %}
+</div>
+
+<!-- ---------------------- MODAL HISTÓRICO ---------------------- -->
+{% for epi in epis %}
+<div id="modalHistorico{{ epi.id }}" class="modal fixed inset-0 bg-black/40 hidden items-center justify-center z-50 backdrop-blur-sm">
+
+  <div class="modal-content bg-white border border-gray-200 rounded-xl shadow-xl p-8 w-full max-w-3xl animate-fadeIn">
+
+    <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-3">
+      <h3 class="text-xl font-semibold text-gray-700 flex items-center gap-2">
+        <i class="fas fa-history"></i> Histórico – {{ epi.nome }}
+      </h3>
+
+      <button onclick="fecharModal('modalHistorico{{ epi.id }}')"
+        class="text-gray-400 hover:text-red-500 text-xl">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    {# usa o relacionamento epi.entregas e ordena por data_entrega (mais recente primeiro) #}
+    {% set historicos = epi.entregas | sort(attribute='data_entrega', reverse=True) %}
+
+    {% if historicos %}
+      <div class="max-h-96 overflow-y-auto">
+        <table class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="bg-gray-100 text-gray-600 uppercase text-xs border-b">
+              <th class="py-2 px-3">Data</th>
+              <th class="py-2 px-3">Ação</th>
+              <th class="py-2 px-3 text-center">Qtd</th>
+              <th class="py-2 px-3">Colaborador</th>
+              <th class="py-2 px-3">Responsável</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for h in historicos %}
+            <tr class="border-b">
+              <td class="py-2 px-3">
+                {{ h.data_entrega.strftime('%d/%m/%Y %H:%M') }}
+              </td>
+
+              <td class="py-2 px-3">
+                {% if h.status == 'entregue' %}
+                  Entregue
+                {% elif h.status == 'devolvido' %}
+                  Devolvido
+                {% elif h.status == 'descartado' %}
+                  Descartado
+                {% else %}
+                  {{ h.status or '-' }}
+                {% endif %}
+              </td>
+
+              <td class="py-2 px-3 text-center">
+                {{ h.quantidade }}
+              </td>
+
+              <td class="py-2 px-3">
+                {{ h.funcionario.nome }}
+              </td>
+
+              <td class="py-2 px-3">
+                {{ h.entregue_por or '-' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+
+        </table>
+      </div>
+
+    {% else %}
+      <p class="text-gray-500 italic text-center py-6">
+        Nenhuma movimentação registrada para este EPI.
+      </p>
+    {% endif %}
+
+  </div>
+
+</div>
+{% endfor %}
+
+
+<!-- ---------------------- MODAIS CADASTRO / ENTREGA ---------------------- -->
+<div id="modalCadastro" class="modal fixed inset-0 bg-black/40 hidden items-center justify-center z-50 backdrop-blur-sm">
+  <div class="modal-content bg-white border border-gray-200 rounded-xl shadow-xl p-8 w-full max-w-2xl animate-fadeIn">
+    <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-3">
+      <h3 class="text-xl font-semibold text-blue-700 flex items-center gap-2">
+        <i class="fas fa-plus-circle"></i> Novo EPI
+      </h3>
+      <button onclick="fecharModal('modalCadastro')" class="text-gray-400 hover:text-red-500 text-xl">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form method="POST" action="{{ url_for('epis') }}" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <div class="md:col-span-2">
+        <label class="text-gray-600 text-sm">Nome do EPI</label>
+        <input type="text" name="nome" required
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Código do Produto</label>
+        <input type="text" name="codigo_produto"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full" placeholder="Ex: EPI-001">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Número do CA</label>
+        <input type="text" name="numero_ca"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Validade</label>
+        <input type="date" name="validade_ca"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Quantidade</label>
+        <input type="number" min="1" name="quantidade" required
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full text-center">
+      </div>
+
+      <div class="md:col-span-2">
+        <label class="text-gray-600 text-sm">Observação</label>
+        <input type="text" name="observacao"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div class="md:col-span-2 flex justify-end gap-3 mt-4">
+        <button type="button" onclick="fecharModal('modalCadastro')"
+          class="px-6 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700">
+          Cancelar
+        </button>
+
+        <button type="submit"
+          class="px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
+          Salvar
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<div id="modalEntrega" class="modal fixed inset-0 bg-black/40 hidden items-center justify-center z-50 backdrop-blur-sm">
+  <div class="modal-content bg-white border border-gray-200 rounded-xl shadow-xl p-8 w-full max-w-2xl animate-fadeIn">
+
+    <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-3">
+      <h3 class="text-xl font-semibold text-green-700 flex items-center gap-2">
+        <i class="fas fa-hand-holding-box"></i> Entregar EPI
+      </h3>
+      <button onclick="fecharModal('modalEntrega')" class="text-gray-400 hover:text-red-500 text-xl">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form method="POST" action="{{ url_for('entregar_epi') }}" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <div>
+        <label class="text-gray-600 text-sm">Funcionário</label>
+        <select name="funcionario_id" required
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+          <option value="">Selecione...</option>
+          {% for f in funcionarios %}
+          <option value="{{ f.id }}">{{ f.nome }} - {{ f.setor }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">EPI</label>
+        <select name="epi_id" required
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+          <option value="">Selecione...</option>
+          {% for e in epis %}
+          <option value="{{ e.id }}">{{ e.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Quantidade</label>
+        <input type="number" min="1" name="quantidade" required
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full text-center">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Validade</label>
+        <input type="date" name="validade_entrega" required
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Senha</label>
+        <input type="password" name="senha_validacao" required
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div class="md:col-span-2 flex justify-end gap-3 mt-4">
+        <button type="button" onclick="fecharModal('modalEntrega')"
+          class="px-6 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700">
+          Cancelar
+        </button>
+
+        <button type="submit"
+          class="px-8 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">
+          Confirmar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ---------------------- MODAIS EDITAR + CONFIRMAR EXCLUSÃO ---------------------- -->
+{% for epi in epis %}
+<div id="modalEditar{{ epi.id }}" class="modal fixed inset-0 bg-black/40 hidden items-center justify-center z-50 backdrop-blur-sm">
+  <div class="modal-content bg-white border border-gray-200 rounded-xl shadow-xl p-8 w-full max-w-2xl animate-fadeIn">
+
+    <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-3">
+      <h3 class="text-xl font-semibold text-blue-700 flex items-center gap-2">
+        <i class="fas fa-pen"></i> Editar EPI
+      </h3>
+      <button onclick="fecharModal('modalEditar{{ epi.id }}')" class="text-gray-400 hover:text-red-500 text-xl">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form method="POST" action="{{ url_for('editar_epi', id=epi.id) }}" 
+          class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <div class="md:col-span-2">
+        <label class="text-gray-600 text-sm">Nome do EPI</label>
+        <input type="text" name="nome" value="{{ epi.nome }}"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Código do Produto</label>
+        <input type="text" name="codigo_produto" value="{{ epi.codigo_produto or '' }}"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Número do CA</label>
+        <input type="text" name="numero_ca" value="{{ epi.numero_ca }}"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Validade</label>
+        <input type="date" name="validade_ca"
+          value="{% if epi.validade_ca %}{% if epi.validade_ca.__class__.__name__ == 'datetime' %}{{ epi.validade_ca.strftime('%Y-%m-%d') }}{% else %}{{ epi.validade_ca }}{% endif %}{% endif %}"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full">
+      </div>
+
+      <div>
+        <label class="text-gray-600 text-sm">Quantidade</label>
+        <input type="number" name="quantidade" value="{{ epi.quantidade }}"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full text-center">
+      </div>
+
+      <div class="md:col-span-2 flex justify-between items-center mt-4">
+
+        <!-- Botão que abre o modal de confirmação de exclusão -->
+        <button type="button"
+          onclick="abrirModal('modalConfirmarExclusao{{ epi.id }}')"
+          class="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium flex items-center gap-2">
+          <i class="fas fa-trash"></i> Excluir EPI
+        </button>
+
+        <div class="flex gap-3">
+          <button type="button" onclick="fecharModal('modalEditar{{ epi.id }}')"
+            class="px-6 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700">
+            Cancelar
+          </button>
+
+          <button type="submit"
+            class="px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
+            Salvar
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de CONFIRMAÇÃO de exclusão (alerta) -->
+<div id="modalConfirmarExclusao{{ epi.id }}" class="modal fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm">
+  <div class="modal-content bg-white border border-red-400 rounded-xl shadow-2xl p-8 w-full max-w-md animate-fadeIn">
+
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+        <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold text-red-700">Confirmar exclusão</h3>
+        <p class="text-sm text-gray-600">
+          Atenção! Esta ação é permanente e não pode ser desfeita.
+        </p>
+      </div>
+    </div>
+
+    <div class="bg-red-50 border border-red-100 text-red-700 text-sm rounded-lg p-3 mb-4">
+      Você está prestes a excluir o EPI: <strong>{{ epi.nome }}</strong>.
+    </div>
+
+    <div class="flex justify-end gap-3">
+      <button type="button"
+        onclick="fecharModal('modalConfirmarExclusao{{ epi.id }}')"
+        class="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium">
+        Cancelar
+      </button>
+
+      <a href="{{ url_for('deletar_epi', id=epi.id) }}"
+        class="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold flex items-center gap-2">
+        <i class="fas fa-trash-alt"></i> Excluir definitivamente
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endfor %}
+
+<!-- ---------------------- SCRIPTS ---------------------- -->
+<script>
+  /* Abrir modal */
+  function abrirModal(id){
+    const el = document.getElementById(id);
+    if (el) el.classList.replace('hidden','flex');
+  }
+
+  /* Fechar modal */
+  function fecharModal(id){
+    const el = document.getElementById(id);
+    if (el) el.classList.replace('flex','hidden');
+  }
+
+  /* Fechar ao clicar fora do conteúdo */
+  window.addEventListener('click', function(e){
+    document.querySelectorAll('.modal').forEach(modal=>{
+      if(e.target === modal){
+        modal.classList.replace('flex','hidden');
+      }
+    });
+  });
+
+  /* 🔍 Filtro por texto */
+  function filtrarEPIs() {
+    const filtro = document.getElementById('filtroBusca').value.toLowerCase();
+    const linhas = document.querySelectorAll('#tabelaEPIs tbody tr');
+
+    linhas.forEach(linha => {
+      const texto = linha.innerText.toLowerCase();
+      linha.style.display = texto.includes(filtro) ? '' : 'none';
+    });
+  }
+</script>
+
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.25s ease-out forwards;
+  }
+</style>
+
+{% endblock %}

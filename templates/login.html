@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - Sistema</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/a2e0e9b2e4.js" crossorigin="anonymous"></script>
+<!-- FAVICON -->
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+
+  <style>
+    body {
+      /* 🔥 IMAGEM DE FUNDO */
+      background-image: url("{{ url_for('static', filename='bg_login.jpg') }}");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+
+      /* 🔥 Overlay MUITO mais suave (imagem aparece forte) */
+      background-blend-mode: overlay;
+      background-color: rgba(255, 255, 255, 0.25);
+
+      font-family: 'Inter', sans-serif;
+    }
+
+    .login-box {
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+      animation: fadeIn 0.6s ease-out;
+
+      /* blur suave */
+      backdrop-filter: blur(2px);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .input-field {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+    }
+
+    .input-field:focus-within {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
+    }
+  </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen">
+
+  <!-- CAIXA PRINCIPAL -->
+  <div class="login-box p-10 rounded-2xl w-96 text-gray-800">
+
+    <!-- LOGO -->
+    <div class="flex justify-center mb-6">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo"
+           class="h-24 max-h-28 max-w-[180px] mx-auto drop-shadow-md object-contain">
+    </div>
+
+    <!-- TÍTULO -->
+    <h2 class="text-2xl font-semibold text-center mb-2 text-blue-600">
+      <i class="fas fa-user-shield mr-1"></i> Acesso ao Sistema
+    </h2>
+
+    <p class="text-center text-gray-500 mb-6 text-sm">
+      Utilize seu login e senha corporativos
+    </p>
+
+    <!-- ALERTA DE ERRO -->
+    {% if erro_login %}
+    <div class="mb-4 text-sm text-red-600 bg-red-100 border border-red-300 rounded-lg p-3 flex items-center gap-2">
+      <i class="fas fa-exclamation-circle text-red-600"></i>
+      {{ erro_login }}
+    </div>
+    {% endif %}
+
+    <!-- FORMULÁRIO -->
+    <form method="POST">
+
+      <!-- LOGIN -->
+      <label class="block mb-1 text-sm font-medium text-gray-700">Login</label>
+      <div class="input-field flex items-center rounded px-3 py-2 mb-4 transition">
+        <i class="fas fa-user text-gray-400 mr-2"></i>
+        <input type="text" name="login" placeholder="Digite seu login"
+               class="bg-transparent w-full focus:outline-none text-gray-700">
+      </div>
+
+      <!-- SENHA -->
+      <label class="block mb-1 text-sm font-medium text-gray-700">Senha</label>
+      <div class="input-field flex items-center rounded px-3 py-2 mb-6 transition">
+        <i class="fas fa-lock text-gray-400 mr-2"></i>
+        <input type="password" name="senha" placeholder="Digite sua senha"
+               class="bg-transparent w-full focus:outline-none text-gray-700">
+      </div>
+
+      <!-- BOTÃO -->
+      <button type="submit"
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition
+                     duration-200 transform hover:scale-[1.02] shadow-md">
+        <i class="fas fa-right-to-bracket mr-2"></i> Entrar
+      </button>
+    </form>
+
+    <!-- RODAPÉ -->
+    <p class="text-center text-xs text-gray-500 mt-6">
+      © 2025 — <span class="text-blue-600 font-semibold">Sistema Interno</span>
+    </p>
+  </div>
+
+</body>
+</html>

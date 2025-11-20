@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="text-2xl font-semibold mb-8 flex items-center justify-between text-gray-700">
+
+  <!-- ESQUERDA -->
+  <span class="flex items-center gap-2">
+    <i class="fas fa-tachometer-alt text-blue-600"></i>
+    Painel de Controle
+  </span>
+
+  <!-- ================= FILTRO DE PERÍODO ================= -->
+  <form method="get" class="flex items-center gap-3">
+
+    <!-- Campo visual (SEM NAME!) -->
+    <input type="text" id="periodo"
+           placeholder="Filtrar período"
+           class="border border-gray-300 rounded-lg px-3 py-1.5 w-52 text-sm focus:ring focus:ring-blue-300">
+
+    <!-- Campos reais enviados ao backend -->
+    <input type="hidden" id="data_inicio" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
+    <input type="hidden" id="data_fim" name="data_fim" value="{{ request.args.get('data_fim','') }}">
+
+    <button type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm shadow">
+      <i class="fas fa-filter mr-1"></i> Aplicar
+    </button>
+
+    {% if request.args.get('data_inicio') %}
+    <a href="/dashboard"
+       class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1.5 rounded-lg text-sm shadow">
+      Limpar
+    </a>
+    {% endif %}
+  </form>
+
+</h2>
+
+<!-- ===================== MENSAGEM DE FILTRO ===================== -->
+{% if request.args.get('data_inicio') and request.args.get('data_fim') %}
+<div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg mb-6 flex items-center justify-between">
+  <span>
+    <i class="fas fa-info-circle mr-2"></i>
+    Filtro aplicado:
+    <strong>{{ request.args.get('data_inicio') }}</strong>
+    até
+    <strong>{{ request.args.get('data_fim') }}</strong>
+  </span>
+
+  <a href="/dashboard" class="text-blue-700 hover:text-blue-900 font-semibold">Remover filtro</a>
+</div>
+{% endif %}
+
+<!-- ===================== LITEPICKER ===================== -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
+<script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+
+<script>
+  new Litepicker({
+      element: document.getElementById('periodo'),
+      singleMode: false,
+      numberOfMonths: 2,
+      numberOfColumns: 2,
+      format: 'DD/MM/YYYY',
+      lang: 'pt-BR',
+      autoApply: true,
+      setup: (picker) => {
+          picker.on('selected', (start, end) => {
+              document.getElementById('data_inicio').value = start.format('YYYY-MM-DD');
+              document.getElementById('data_fim').value = end.format('YYYY-MM-DD');
+          });
+      }
+  });
+</script>
+
+
+
+<!-- ===================== CARDS RESUMO ===================== -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+
+  <!-- CARD EPIs -->
+  <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xs text-gray-500 uppercase tracking-wide">Total de EPIs</h3>
+      <i class="fas fa-hard-hat text-blue-500 text-2xl"></i>
+    </div>
+    <p class="text-3xl font-bold text-gray-800 mt-2 count-up" data-value="{{ total_epis }}">0</p>
+  </div>
+
+  <!-- CARD ENTREGAS -->
+  <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xs text-gray-500 uppercase tracking-wide">Entregas Realizadas</h3>
+      <i class="fas fa-box-open text-purple-500 text-2xl"></i>
+    </div>
+    <p class="text-3xl font-bold text-gray-800 mt-2 count-up" data-value="{{ total_entregas }}">0</p>
+  </div>
+
+  <!-- CARD FUNCIONÁRIOS -->
+  <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xs text-gray-500 uppercase tracking-wide">Colaboradores Ativos</h3>
+      <i class="fas fa-users text-green-600 text-2xl"></i>
+    </div>
+    <p class="text-3xl font-bold text-gray-800 mt-2 count-up" data-value="{{ total_funcionarios }}">0</p>
+  </div>
+
+  <!-- CARD USUÁRIOS -->
+  <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xs text-gray-500 uppercase tracking-wide">Usuários do Sistema</h3>
+      <i class="fas fa-user-shield text-amber-500 text-2xl"></i>
+    </div>
+    <p class="text-3xl font-bold text-gray-800 mt-2 count-up" data-value="{{ total_usuarios }}">0</p>
+  </div>
+</div>
+
+
+
+<!-- ===================== NOVOS CARDS GERENCIAIS ===================== -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+
+  <div class="p-5 bg-white border border-red-200 rounded-xl shadow-sm hover:shadow-md transition">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xs text-red-600 uppercase tracking-wide">Estoque Crítico</h3>
+      <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
+    </div>
+    <p class="text-3xl font-bold text-red-700 mt-2 count-up" data-value="{{ total_criticos }}">0</p>
+  </div>
+
+  <div class="p-5 bg-white border border-rose-200 rounded-xl shadow-sm hover:shadow-md transition">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xs text-rose-600 uppercase tracking-wide">EPIs Vencidos</h3>
+      <i class="fas fa-times-circle text-rose-500 text-2xl"></i>
+    </div>
+    <p class="text-3xl font-bold text-rose-700 mt-2 count-up" data-value="{{ total_vencidos }}">0</p>
+  </div>
+
+  <div class="p-5 bg-white border border-blue-200 rounded-xl shadow-sm hover:shadow-md transition">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xs text-blue-600 uppercase tracking-wide">Entregas no Mês</h3>
+      <i class="fas fa-calendar-week text-blue-500 text-2xl"></i>
+    </div>
+    <p class="text-3xl font-bold text-blue-700 mt-2 count-up" data-value="{{ entregas_mes }}">0</p>
+  </div>
+
+  <div class="p-5 bg-white border border-yellow-200 rounded-xl shadow-sm hover:shadow-md transition">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xs text-yellow-600 uppercase tracking-wide">Pendências de EPI</h3>
+      <i class="fas fa-file-alt text-yellow-500 text-2xl"></i>
+    </div>
+    <p class="text-3xl font-bold text-yellow-700 mt-2 count-up" data-value="{{ pendencias }}">0</p>
+  </div>
+
+</div>
+
+
+
+<!-- ===================== GRÁFICOS ===================== -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+
+  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center">
+      <i class="fas fa-chart-pie text-blue-600 mr-2"></i> EPIs por Tipo
+    </h3>
+    <canvas id="chartEpiTipo"></canvas>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center">
+      <i class="fas fa-chart-bar text-purple-600 mr-2"></i> Entregas por Colaborador
+    </h3>
+    <canvas id="chartEntregasColab"></canvas>
+  </div>
+
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+
+  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center">
+      <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i> EPIs em Estoque Crítico
+    </h3>
+    <canvas id="chartCriticos"></canvas>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center">
+      <i class="fas fa-fire text-yellow-600 mr-2"></i> EPIs Mais Entregues (Top 5)
+    </h3>
+    <canvas id="chartEpiMaisUsados"></canvas>
+  </div>
+
+</div>
+
+
+<!-- ===================== GRÁFICOS (JS) ===================== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const tiposEpi = {{ tipos_epi | safe }};
+const qtdEpi = {{ qtd_epi | safe }};
+const nomesColabs = {{ nomes_colabs | safe }};
+const qtdEntregas = {{ qtd_entregas | safe }};
+const nomesCriticos = {{ nomes_criticos | safe }};
+const qtdCriticos = {{ qtd_criticos | safe }};
+const nomesEpiMaisUsados = {{ nomes_epi_mais_usados | safe }};
+const qtdEpiMaisUsados = {{ qtd_epi_mais_usados | safe }};
+
+/* EPIs por tipo */
+new Chart(document.getElementById('chartEpiTipo'), {
+  type: 'doughnut',
+  data: {
+    labels: tiposEpi,
+    datasets: [{
+      data: qtdEpi,
+      backgroundColor: ['#3b82f6','#6366f1','#f59e0b','#ef4444','#10b981'],
+      borderWidth: 0
+    }]
+  }
+});
+
+/* Entregas por colaborador */
+new Chart(document.getElementById('chartEntregasColab'), {
+  type: 'bar',
+  data: {
+    labels: nomesColabs,
+    datasets: [{
+      data: qtdEntregas,
+      backgroundColor: '#6366f1',
+      borderRadius: 6
+    }]
+  },
+  options: {
+    indexAxis: 'y'
+  }
+});
+
+/* Estoque crítico */
+new Chart(document.getElementById('chartCriticos'), {
+  type: 'bar',
+  data: {
+    labels: nomesCriticos,
+    datasets: [{
+      data: qtdCriticos,
+      backgroundColor: '#ef4444',
+      borderRadius: 6
+    }]
+  }
+});
+
+/* Mais usados */
+new Chart(document.getElementById('chartEpiMaisUsados'), {
+  type: 'bar',
+  data: {
+    labels: nomesEpiMaisUsados,
+    datasets: [{
+      data: qtdEpiMaisUsados,
+      backgroundColor: '#f59e0b',
+      borderRadius: 6
+    }]
+  }
+});
+
+/* Contadores animados */
+document.querySelectorAll('.count-up').forEach(el => {
+  const final = +el.dataset.value;
+  let count = 0;
+  const step = Math.ceil(final / 30);
+  const interval = setInterval(() => {
+    count += step;
+    el.textContent = count >= final ? final : count;
+    if (count >= final) clearInterval(interval);
+  }, 30);
+});
+</script>
+
+{% endblock %}
