@@ -90,6 +90,8 @@
           <th class="py-3 px-4">Nome</th>
           <th class="py-3 px-4 text-center">CA / Validade</th>
           <th class="py-3 px-4 text-center">Qtd</th>
+          <th class="py-3 px-4 text-center">Valor Unitário</th>
+          <th class="py-3 px-4 text-center">Custo Total (R$)</th>
           <th class="py-3 px-4 text-center">Status</th>
           <th class="py-3 px-4 text-center">Nível</th>
           <th class="py-3 px-4 text-right">Ações</th>
@@ -98,6 +100,8 @@
 
       <tbody>
         {% for epi in epis %}
+        {% set valor_unit = epi.valor_unitario or 0 %}
+        {% set total_epi = (epi.quantidade or 0) * valor_unit %}
         <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
 
           <td class="py-3 px-4 text-gray-700 font-medium">
@@ -121,6 +125,19 @@
 
           <td class="py-3 px-4 text-center font-semibold text-gray-700">
             {{ epi.quantidade }}
+          </td>
+
+          <!-- 💰 VALOR UNITÁRIO -->
+          <td class="py-3 px-4 text-center text-gray-700">
+            R$ {{ "%.2f"|format(valor_unit)|replace(".", ",") }}
+          </td>
+
+          <!-- 💸 CUSTO TOTAL (QTD × VALOR) -->
+          <td class="py-3 px-4 text-center text-gray-800">
+            R$ {{ "%.2f"|format(total_epi)|replace(".", ",") }}<br>
+            <span class="text-xs text-gray-500">
+              ({{ epi.quantidade }} × R$ {{ "%.2f"|format(valor_unit)|replace(".", ",") }})
+            </span>
           </td>
 
           <td class="py-3 px-4 text-center">
@@ -292,6 +309,13 @@
           class="border border-gray-300 rounded-lg px-4 py-2 w-full text-center">
       </div>
 
+      <!-- 💰 VALOR UNITÁRIO NO CADASTRO -->
+      <div>
+        <label class="text-gray-600 text-sm">Valor Unitário (R$)</label>
+        <input type="number" min="0" step="0.01" name="valor_unitario"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full text-center" placeholder="Ex: 25.50">
+      </div>
+
       <div class="md:col-span-2">
         <label class="text-gray-600 text-sm">Observação</label>
         <input type="text" name="observacao"
@@ -428,6 +452,14 @@
       <div>
         <label class="text-gray-600 text-sm">Quantidade</label>
         <input type="number" name="quantidade" value="{{ epi.quantidade }}"
+          class="border border-gray-300 rounded-lg px-4 py-2 w-full text-center">
+      </div>
+
+      <!-- 💰 VALOR UNITÁRIO NA EDIÇÃO -->
+      <div>
+        <label class="text-gray-600 text-sm">Valor Unitário (R$)</label>
+        <input type="number" min="0" step="0.01" name="valor_unitario"
+          value="{{ epi.valor_unitario or 0 }}"
           class="border border-gray-300 rounded-lg px-4 py-2 w-full text-center">
       </div>
 

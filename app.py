@@ -10,11 +10,17 @@ from flask_login import (
 )
 from datetime import datetime, date
 from io import BytesIO
+
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
+
 import sqlite3
 import os
+
+# ✅ IMPORT NECESSÁRIO PARA SOMAS, AGRUPAMENTOS E FUNÇÕES SQL
+from sqlalchemy import func
+
 
 # ============================
 # CONFIGURAÇÃO INICIAL DO APP
@@ -47,17 +53,20 @@ class Epi(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # campos existentes
+    # 🔹 Dados principais
     nome = db.Column(db.String(120), nullable=False)
+    codigo_produto = db.Column(db.String(50))
     numero_ca = db.Column(db.String(50))
-    validade_ca = db.Column(db.String(50))  # formato BR DD/MM/YYYY
+    validade_ca = db.Column(db.String(50))  # DD/MM/YYYY ou YYYY-MM-DD
     quantidade = db.Column(db.Integer, default=0)
 
-    # 🔥 novos campos
-    codigo_produto = db.Column(db.String(50))
+    # 💰 Valor unitário do EPI
+    valor_unitario = db.Column(db.Float, default=0.0)
+
+    # 🔹 Observação geral
     observacao = db.Column(db.String(255))
 
-    # relação com entregas
+    # 🔹 Relação com entregas
     entregas = db.relationship(
         'EntregaEpi',
         backref='epi',
@@ -65,13 +74,14 @@ class Epi(db.Model):
         cascade='all, delete-orphan'
     )
 
-    # relação com histórico (novo)
+    # 🔹 Relação com histórico
     historico = db.relationship(
         "HistoricoEpi",
         backref="epi_rel",
         lazy=True,
         cascade='all, delete-orphan'
     )
+
 
 
 # ============================
@@ -150,19 +160,27 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+# ============================
+# CAMINHO DO BANCO SQLITE  ✅ (AQUI ESTAVA FALTANDO!)
+# ============================
+def _sqlite_path_from_uri():
+    """Extrai o caminho real do arquivo SQLite a partir da URI."""
+    uri = str(app.config.get("SQLALCHEMY_DATABASE_URI", ""))
+
+    # Ex.: sqlite:///database.db
+    if uri.startswith("sqlite:///"):
+        return uri.replace("sqlite:///", "")
+
+    # Ex.: sqlite:////caminho/absoluto/database.db
+    if uri.startswith("sqlite:////"):
+        return uri.replace("sqlite:////", "/")
+
+    return ""
+
 
 # ============================
 # MIGRAÇÃO AUTOMÁTICA SQLITE
 # ============================
-def _sqlite_path_from_uri():
-    uri = str(app.config.get("SQLALCHEMY_DATABASE_URI", ""))
-    if uri.startswith("sqlite:///"):
-        return uri.replace("sqlite:///", "")
-    if uri.startswith("sqlite:////"):  # caminho absoluto
-        return uri.replace("sqlite:////", "/")
-    return ""
-
-
 def _ensure_table_columns():
     """
     Garante as colunas novas no SQLite sem precisar recriar nada.
@@ -173,8 +191,10 @@ def _ensure_table_columns():
     - Epi.quantidade (INTEGER DEFAULT 0)
     - Epi.codigo_produto (TEXT NULL)
     - Epi.observacao (TEXT NULL)
+    - Epi.valor_unitario (REAL DEFAULT 0)
     """
     db_path = _sqlite_path_from_uri()
+
     if not db_path or not os.path.exists(db_path):
         return
 
@@ -182,32 +202,45 @@ def _ensure_table_columns():
         con = sqlite3.connect(db_path)
         cur = con.cursor()
 
-        # --- EntregaEpi ---
+        # -------------------------
+        # TABELA EntregaEpi
+        # -------------------------
         cur.execute("PRAGMA table_info(EntregaEpi);")
         entrega_cols = [r[1] for r in cur.fetchall()]
 
         if "status" not in entrega_cols:
             cur.execute("ALTER TABLE EntregaEpi ADD COLUMN status TEXT DEFAULT 'entregue'")
+
         if "observacao" not in entrega_cols:
             cur.execute("ALTER TABLE EntregaEpi ADD COLUMN observacao TEXT")
+
         if "data_devolucao" not in entrega_cols:
             cur.execute("ALTER TABLE EntregaEpi ADD COLUMN data_devolucao TEXT")
+
         if "data_descarte" not in entrega_cols:
             cur.execute("ALTER TABLE EntregaEpi ADD COLUMN data_descarte TEXT")
 
-        # --- Epi ---
-        cur.execute("PRAGMA table_info(Epi);")
+        # -------------------------
+        # TABELA epi
+        # -------------------------
+        cur.execute("PRAGMA table_info(epi);")
         epi_cols = [r[1] for r in cur.fetchall()]
 
         if "quantidade" not in epi_cols:
-            cur.execute("ALTER TABLE Epi ADD COLUMN quantidade INTEGER DEFAULT 0")
+            cur.execute("ALTER TABLE epi ADD COLUMN quantidade INTEGER DEFAULT 0")
+
         if "codigo_produto" not in epi_cols:
-            cur.execute("ALTER TABLE Epi ADD COLUMN codigo_produto TEXT")
+            cur.execute("ALTER TABLE epi ADD COLUMN codigo_produto TEXT")
+
         if "observacao" not in epi_cols:
-            cur.execute("ALTER TABLE Epi ADD COLUMN observacao TEXT")
+            cur.execute("ALTER TABLE epi ADD COLUMN observacao TEXT")
+
+        if "valor_unitario" not in epi_cols:
+            cur.execute("ALTER TABLE epi ADD COLUMN valor_unitario REAL DEFAULT 0")
 
         con.commit()
         con.close()
+
     except Exception as e:
         print(f"[WARN] Migração automática SQLite falhou: {e}")
 
@@ -236,7 +269,7 @@ def index():
 # ============================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    erro_login = None  # variável local, exclusiva da tela de login
+    erro_login = None
 
     if request.method == 'POST':
         login_usuario = (request.form.get('login') or '').strip()
@@ -261,15 +294,17 @@ def logout():
     return redirect(url_for('login'))
 
 
+
 # ============================
 # DASHBOARD
 # ============================
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # ---------------------------
-    # RECEBENDO FILTROS (opcional)
-    # ---------------------------
+
+    # ============================
+    # FILTRO DE PERÍODO
+    # ============================
     data_inicio_str = request.args.get('data_inicio', '').strip()
     data_fim_str = request.args.get('data_fim', '').strip()
 
@@ -277,93 +312,140 @@ def dashboard():
     dt_inicio = None
     dt_fim = None
 
-    # tenta interpretar as datas em dois formatos
     def parse_data(s):
         if not s:
             return None
         for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
             try:
                 return datetime.strptime(s, fmt)
-            except ValueError:
-                continue
+            except:
+                pass
         return None
 
     if data_inicio_str and data_fim_str:
         dt_inicio = parse_data(data_inicio_str)
         dt_fim = parse_data(data_fim_str)
+
         if dt_inicio and dt_fim:
-            # fim do dia
             dt_fim = dt_fim.replace(hour=23, minute=59, second=59)
             filtro_ativo = True
 
-    # ---------------------------
-    # MÉTRICAS FIXAS (SEM FILTRO)
-    # ---------------------------
+    # ============================
+    # MÉTRICAS FIXAS
+    # ============================
     total_epis = Epi.query.count()
     total_funcionarios = Funcionario.query.count()
     total_usuarios = User.query.count()
 
-    # ---------------------------
-    # ESTOQUE CRÍTICO
-    # ---------------------------
-    epis_criticos = Epi.query.filter(Epi.quantidade <= 10).all()
+    # ============================
+    # ESTOQUE CRÍTICO (agora filtrado)
+    # ============================
+    epi_query = Epi.query
+
+    if filtro_ativo:
+        epis_criticos = (
+            db.session.query(Epi)
+            .join(EntregaEpi, EntregaEpi.epi_id == Epi.id)
+            .filter(
+                EntregaEpi.data_entrega >= dt_inicio,
+                EntregaEpi.data_entrega <= dt_fim,
+                Epi.quantidade <= 10
+            )
+            .all()
+        )
+    else:
+        epis_criticos = Epi.query.filter(Epi.quantidade <= 10).all()
+
     total_criticos = len(epis_criticos)
     nomes_criticos = [e.nome for e in epis_criticos]
     qtd_criticos = [e.quantidade for e in epis_criticos]
 
-    # ---------------------------
-    # EPIs VENCIDOS
-    # ---------------------------
+    # ============================
+    # CA VENCIDO (não precisa filtro)
+    # ============================
     hoje = date.today()
     vencidos = []
+
+    def parse_ca(valor):
+        for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(valor, fmt).date()
+            except:
+                pass
+        return None
+
     for e in Epi.query.all():
-        try:
-            validade = datetime.strptime(e.validade_ca, "%d/%m/%Y").date()
-            if validade < hoje:
-                vencidos.append(e)
-        except Exception:
-            pass
+        validade = parse_ca(e.validade_ca)
+        if validade and validade < hoje:
+            vencidos.append(e)
+
     total_vencidos = len(vencidos)
 
-    # ---------------------------
-    # ENTREGAS NO MÊS (NÃO USA FILTRO)
-    # ---------------------------
+    # ============================
+    # ENTREGAS NO MÊS
+    # ============================
     inicio_mes = datetime(hoje.year, hoje.month, 1)
     entregas_mes = EntregaEpi.query.filter(
         EntregaEpi.data_entrega >= inicio_mes,
         EntregaEpi.status == 'entregue'
     ).count()
 
-    # ==================================================================
-    # ===============    CONSULTAS QUE USAM DATA    ====================
-    # ==================================================================
-
-    # BASE: entregas com status='entregue'
+    # ============================
+    # BASE FILTRADA
+    # ============================
     base_entregas = EntregaEpi.query.filter(EntregaEpi.status == 'entregue')
+
     if filtro_ativo:
         base_entregas = base_entregas.filter(
             EntregaEpi.data_entrega >= dt_inicio,
             EntregaEpi.data_entrega <= dt_fim
         )
 
-    # TOTAL DE ENTREGAS (considerando filtro se ativo)
     total_entregas = base_entregas.count()
-
-    # PENDÊNCIAS – aqui considerei status='entregue' e quantidade > 0
     pendencias = base_entregas.filter(EntregaEpi.quantidade > 0).count()
 
-    # ---------------------------
-    # GRÁFICO: EPIs por Tipo (NÃO USA FILTRO)
-    # ---------------------------
-    epis = Epi.query.all()
-    tipos_epi = [e.nome for e in epis]
-    qtd_epi = [e.quantidade for e in epis]
+    # ============================
+    # CUSTO DO PERÍODO
+    # ============================
+    custo_rows = (
+        db.session.query(Epi.valor_unitario, EntregaEpi.quantidade)
+        .join(EntregaEpi, EntregaEpi.epi_id == Epi.id)
+        .filter(EntregaEpi.status == "entregue")
+    )
 
-    # ---------------------------
-    # GRÁFICO: ENTREGAS POR COLABORADOR (USA FILTRO)
-    # ---------------------------
-    from sqlalchemy import func
+    if filtro_ativo:
+        custo_rows = custo_rows.filter(
+            EntregaEpi.data_entrega >= dt_inicio,
+            EntregaEpi.data_entrega <= dt_fim
+        )
 
+    custo_mes = sum((r[0] or 0) * (r[1] or 0) for r in custo_rows.all())
+
+    # ============================
+    # EPIs por Tipo (AGORA FILTRADOOO)
+    # ============================
+    if filtro_ativo:
+        tipo_rows = (
+            db.session.query(Epi.nome, func.sum(EntregaEpi.quantidade))
+            .join(EntregaEpi, EntregaEpi.epi_id == Epi.id)
+            .filter(
+                EntregaEpi.data_entrega >= dt_inicio,
+                EntregaEpi.data_entrega <= dt_fim,
+                EntregaEpi.status == 'entregue'
+            )
+            .group_by(Epi.nome)
+            .all()
+        )
+        tipos_epi = [row[0] for row in tipo_rows]
+        qtd_epi = [int(row[1] or 0) for row in tipo_rows]
+    else:
+        epis = Epi.query.all()
+        tipos_epi = [e.nome for e in epis]
+        qtd_epi = [e.quantidade for e in epis]
+
+    # ============================
+    # Entregas por Colaborador (já filtrado)
+    # ============================
     colab_query = (
         db.session.query(Funcionario.nome, func.count(EntregaEpi.id))
         .join(EntregaEpi, EntregaEpi.funcionario_id == Funcionario.id)
@@ -376,15 +458,13 @@ def dashboard():
             EntregaEpi.data_entrega <= dt_fim
         )
 
-    colab_query = colab_query.group_by(Funcionario.nome).order_by(func.count(EntregaEpi.id).desc())
-    colab_rows = colab_query.all()
-
+    colab_rows = colab_query.group_by(Funcionario.nome).all()
     nomes_colabs = [row[0] for row in colab_rows]
     qtd_entregas = [int(row[1]) for row in colab_rows]
 
-    # ---------------------------
-    # TOP 5 EPIs MAIS USADOS (USA FILTRO)
-    # ---------------------------
+    # ============================
+    # TOP 5 (já filtrado)
+    # ============================
     usados_query = (
         db.session.query(Epi.nome, func.sum(EntregaEpi.quantidade))
         .join(EntregaEpi, EntregaEpi.epi_id == Epi.id)
@@ -397,32 +477,32 @@ def dashboard():
             EntregaEpi.data_entrega <= dt_fim
         )
 
-    usados_query = usados_query.group_by(Epi.nome).order_by(func.sum(EntregaEpi.quantidade).desc()).limit(5)
-    usados_rows = usados_query.all()
+    usados_rows = usados_query.group_by(Epi.nome)\
+                              .order_by(func.sum(EntregaEpi.quantidade).desc())\
+                              .limit(5).all()
 
     nomes_epi_mais_usados = [row[0] for row in usados_rows]
     qtd_epi_mais_usados = [int(row[1] or 0) for row in usados_rows]
 
-    # ---------------------------
+    # ============================
     # RENDER
-    # ---------------------------
+    # ============================
     return render_template(
-        'dashboard.html',
+        "dashboard.html",
         user=current_user,
 
-        # Cards principais
         total_epis=total_epis,
         total_entregas=total_entregas,
         total_funcionarios=total_funcionarios,
         total_usuarios=total_usuarios,
 
-        # Cards avançados
         total_criticos=total_criticos,
         total_vencidos=total_vencidos,
         entregas_mes=entregas_mes,
         pendencias=pendencias,
 
-        # Gráficos
+        custo_mes=custo_mes,
+
         tipos_epi=tipos_epi,
         qtd_epi=qtd_epi,
         nomes_colabs=nomes_colabs,
@@ -432,8 +512,6 @@ def dashboard():
         nomes_epi_mais_usados=nomes_epi_mais_usados,
         qtd_epi_mais_usados=qtd_epi_mais_usados
     )
-
-
 
 
 
@@ -459,6 +537,8 @@ def registrar_historico(epi_id, acao, quantidade, usuario):
 @login_required
 def epis():
     if request.method == 'POST':
+
+        # Campos básicos
         nome = (request.form.get('nome') or '').strip()
         codigo_produto = (request.form.get('codigo_produto') or '').strip()
         numero_ca = (request.form.get('numero_ca') or '').strip()
@@ -466,23 +546,38 @@ def epis():
         quantidade = int(request.form.get('quantidade') or 0)
         observacao = (request.form.get('observacao') or '').strip()
 
-        if not nome or not validade_ca or quantidade < 0:
-            flash('⚠️ Preencha corretamente os campos do EPI.')
+        # 💰 Valor unitário
+        valor_unitario_raw = request.form.get('valor_unitario', '').strip()
+
+        # Conversão segura do valor
+        valor_unitario = 0.0
+        if valor_unitario_raw:
+            try:
+                valor_unitario = float(valor_unitario_raw.replace(",", "."))
+            except:
+                flash("⚠ Valor unitário inválido. Use apenas números (ex: 25.50 ou 25,50).")
+                return redirect(url_for('epis'))
+
+        # Validação mínima
+        if not nome or quantidade < 0:
+            flash('⚠️ Preencha corretamente os campos obrigatórios do EPI.')
             return redirect(url_for('epis'))
 
+        # Criação do objeto
         novo_epi = Epi(
             nome=nome,
             codigo_produto=codigo_produto,
             numero_ca=numero_ca,
             validade_ca=validade_ca,
             quantidade=quantidade,
-            observacao=observacao
+            observacao=observacao,
+            valor_unitario=valor_unitario
         )
 
         db.session.add(novo_epi)
         db.session.commit()
 
-        # 🔥 registra histórico
+        # 🔥 registra histórico inicial
         registrar_historico(
             epi_id=novo_epi.id,
             acao="Cadastro",
@@ -494,9 +589,17 @@ def epis():
         flash('✅ EPI cadastrado com sucesso!')
         return redirect(url_for('epis'))
 
-    # GET
+    # ============================
+    # GET — Lista
+    # ============================
     filtro = request.args.get('filtro', '').strip()
-    epis_list = Epi.query.filter(Epi.nome.ilike(f"%{filtro}%")).all() if filtro else Epi.query.all()
+
+    epis_list = (
+        Epi.query.filter(Epi.nome.ilike(f"%{filtro}%")).all()
+        if filtro else
+        Epi.query.all()
+    )
+
     funcionarios = Funcionario.query.order_by(Funcionario.nome).all()
 
     return render_template(
@@ -506,6 +609,8 @@ def epis():
         funcionarios=funcionarios,
         filtro=filtro
     )
+
+
 
 
 # ============================
@@ -518,16 +623,33 @@ def editar_epi(id):
 
     quantidade_antiga = epi.quantidade
 
-    epi.nome = (request.form.get('nome') or epi.nome).strip()
-    epi.codigo_produto = (request.form.get('codigo_produto') or epi.codigo_produto).strip()
-    epi.numero_ca = (request.form.get('numero_ca') or epi.numero_ca).strip()
-    epi.validade_ca = (request.form.get('validade_ca') or epi.validade_ca).strip()
-    epi.quantidade = int(request.form.get('quantidade') or epi.quantidade)
-    epi.observacao = (request.form.get('observacao') or epi.observacao)
+    # Campos comuns
+    epi.nome = request.form.get('nome', epi.nome).strip()
+    epi.codigo_produto = request.form.get('codigo_produto', epi.codigo_produto)
+    epi.numero_ca = request.form.get('numero_ca', epi.numero_ca)
+    epi.validade_ca = request.form.get('validade_ca', epi.validade_ca)
+    epi.observacao = request.form.get('observacao', epi.observacao)
+
+    # Quantidade (com conversão segura)
+    nova_quantidade = request.form.get('quantidade')
+    if nova_quantidade is not None and nova_quantidade != "":
+        epi.quantidade = int(nova_quantidade)
+
+    # 💰 Valor Unitário (com conversão segura)
+    valor_unitario = request.form.get('valor_unitario')
+
+    if valor_unitario is not None and valor_unitario != "":
+        try:
+            # troca vírgula por ponto caso venha em formato BR
+            valor_convertido = float(valor_unitario.replace(",", "."))
+            epi.valor_unitario = valor_convertido
+        except:
+            flash("⚠ Valor unitário inválido. Use apenas números e vírgula/ponto.")
+            return redirect(url_for('epis'))
 
     db.session.commit()
 
-    # 🔥 registra histórico apenas se a quantidade mudou
+    # 🔥 Registra histórico apenas se a quantidade mudou
     if epi.quantidade != quantidade_antiga:
         ajuste = epi.quantidade - quantidade_antiga
         registrar_historico(
@@ -539,7 +661,9 @@ def editar_epi(id):
 
     registrar_log(current_user.nome, f"Editou EPI: {epi.nome}")
     flash('✅ EPI atualizado com sucesso!')
+    
     return redirect(url_for('epis'))
+
 
 
 # ============================
@@ -658,7 +782,6 @@ def ficha_epi(funcionario_id):
     from io import BytesIO
     import os
 
-
     # -----------------------------
     # BUSCA DO COLABORADOR
     # -----------------------------
@@ -699,50 +822,53 @@ def ficha_epi(funcionario_id):
     pdf.setLineWidth(0.5)
     pdf.rect(20, 20, width - 40, height - 40)
 
-    # ===== LOGO =====
-    logo_path = os.path.join("static", "logo.png")
+    # ===== LOGO (abaixada) =====
+    logo_path = os.path.join("static", "adaptlink.png")
     if os.path.exists(logo_path):
-        pdf.drawImage(logo_path, 30, height - 80, width=60, height=40, mask='auto')
+        pdf.drawImage(logo_path, 30, height - 70, width=60, height=40, mask='auto')
 
-    # ===== CABEÇALHO =====
+    # ===== CABEÇALHO (ajustado) =====
     pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawCentredString(width / 2, height - 50, "EMPRESA")
+    pdf.drawCentredString(width / 2, height - 65, "EMPRESA")
+
     pdf.setFont("Helvetica", 9)
-    pdf.drawCentredString(width / 2, height - 63,
-        "CNPJ: 00.000.000/0001-00  •  Endereço: Av. Principal, 123 – Japeri/RJ  •  Tel: (21) 97123-5331")
-    pdf.drawCentredString(width / 2, height - 75,
+    pdf.drawCentredString(width / 2, height - 78,
+        "CNPJ: 08.980.148/0001-41  •  Endereço: R. Waldir Pedro Medeiros, 253 – São Miguel, Seropédica/RJ  •  Tel: (21) 2682-7822")
+
+    pdf.drawCentredString(width / 2, height - 90,
         "Responsável Técnico: Jonatas de Alvarenga Galdino")
 
     # ===== TÍTULO =====
     pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawCentredString(width / 2, height - 110, "FICHA DE CONTROLE DE EPI")
+    pdf.drawCentredString(width / 2, height - 125, "FICHA DE CONTROLE DE EPI")
     pdf.setFont("Helvetica", 9)
-    pdf.drawCentredString(width / 2, height - 122,
+    pdf.drawCentredString(width / 2, height - 137,
         "Registro de entrega, uso e devolução de Equipamentos de Proteção Individual")
 
     # ===== DADOS DO COLABORADOR =====
     pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(40, height - 150, "DADOS DO COLABORADOR")
-    pdf.line(40, height - 152, width - 40, height - 152)
+    pdf.drawString(40, height - 165, "DADOS DO COLABORADOR")
+    pdf.line(40, height - 167, width - 40, height - 167)
 
     pdf.setFont("Helvetica", 9)
-    pdf.drawString(40, height - 165, f"Nome: {func.nome}")
-    pdf.drawRightString(width - 40, height - 165,
+    pdf.drawString(40, height - 180, f"Nome: {func.nome}")
+    pdf.drawRightString(width - 40, height - 180,
         f"Data de emissão: {datetime.now().strftime('%d/%m/%Y')}")
-    pdf.drawString(40, height - 177, f"Matrícula: {func.matricula}")
-    pdf.drawString(40, height - 189, f"Setor: {func.setor or '-'}")
+
+    pdf.drawString(40, height - 192, f"Matrícula: {func.matricula}")
+    pdf.drawString(40, height - 204, f"Setor: {func.setor or '-'}")
 
     # ===== PERÍODO =====
     pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(40, height - 205, "PERÍODO DO RELATÓRIO")
-    pdf.line(40, height - 207, width - 40, height - 207)
+    pdf.drawString(40, height - 220, "PERÍODO DO RELATÓRIO")
+    pdf.line(40, height - 222, width - 40, height - 222)
 
     pdf.setFont("Helvetica", 9)
     if data_inicio and data_fim:
-        pdf.drawString(40, height - 220,
-                       f"Movimentações entre: {dt_inicio.strftime('%d/%m/%Y')} até {dt_fim.strftime('%d/%m/%Y')}")
+        pdf.drawString(40, height - 235,
+            f"Movimentações entre: {dt_inicio.strftime('%d/%m/%Y')} até {dt_fim.strftime('%d/%m/%Y')}")
     else:
-        pdf.drawString(40, height - 220, "Movimentações de todo o período")
+        pdf.drawString(40, height - 235, "Movimentações de todo o período")
 
     # ===== TERMO =====
     termo_texto = (
@@ -769,13 +895,11 @@ def ficha_epi(funcionario_id):
     )
 
     p = Paragraph(termo_texto, estilo_termo)
-
     termo_width, termo_height = p.wrap(width - 80, 500)
 
-    termo_y = height - 260
+    termo_y = height - 270
     p.drawOn(pdf, 40, termo_y - termo_height)
 
-    # Atualiza o Y abaixo do termo automaticamente
     y_after_termo = termo_y - termo_height - 20
 
     # ===== TABELA =====
@@ -811,7 +935,6 @@ def ficha_epi(funcionario_id):
     ]))
 
     table_width, table_height = table.wrapOn(pdf, width, height)
-
     table_y = y_after_termo - table_height
     table.drawOn(pdf, 40, table_y)
 
@@ -840,10 +963,11 @@ def ficha_epi(funcionario_id):
     response = make_response(pdf_data)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = (
-        f'inline; filename=ficha_{func.nome.replace(' ', '_')}.pdf'
+        f'inline; filename=ficha_{func.nome.replace(" ", "_")}.pdf'
     )
 
     return response
+
 
 
 
@@ -999,31 +1123,31 @@ def pdf_movimentacao(entrega_id):
     pdf.setLineWidth(0.5)
     pdf.rect(20, 20, width - 40, height - 40)
 
-    # ======================= LOGO =======================
-    logo_path = os.path.join("static", "logo.png")
+    # ======================= LOGO (AJUSTADA PARA O TOPO) =======================
+    logo_path = os.path.join("static", "adaptlink.png")
     if os.path.exists(logo_path):
-        pdf.drawImage(logo_path, 30, height - 80, width=60, height=40, mask='auto')
+        pdf.drawImage(logo_path, 30, height - 65, width=60, height=40, mask='auto')
 
-    # ======================= CABEÇALHO =======================
+    # ======================= CABEÇALHO (ABAIXADO) =======================
     pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawCentredString(width / 2, height - 50, "EMPRESA")
+    pdf.drawCentredString(width / 2, height - 80, "EMPRESA")
 
     pdf.setFont("Helvetica", 9)
     pdf.drawCentredString(
-        width / 2, height - 63,
-        "CNPJ: 00.000.000/0001-00  •  Endereço: Av. Principal, 123 – Japeri/RJ  •  Tel: (21) 97123-5331"
+        width / 2, height - 93,
+        "CNPJ: 08.980.148/0001-41  •  Endereço: R. Waldir Pedro Medeiros, 253 – São Miguel, Seropédica/RJ  •  Tel: (21) 2682-7822"
     )
     pdf.drawCentredString(
-        width / 2, height - 75,
+        width / 2, height - 105,
         "Responsável Técnico: Jonatas de Alvarenga Galdino"
     )
 
     # ======================= TÍTULO =======================
     pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawCentredString(width / 2, height - 110, "MOVIMENTAÇÃO DE EPI")
+    pdf.drawCentredString(width / 2, height - 140, "MOVIMENTAÇÃO DE EPI")
 
     # ======================= DADOS DO COLABORADOR =======================
-    y = height - 150
+    y = height - 180
     pdf.setFont("Helvetica-Bold", 10)
     pdf.drawString(40, y, "DADOS DO COLABORADOR")
     pdf.line(40, y - 2, width - 40, y - 2)
@@ -1097,9 +1221,7 @@ def pdf_movimentacao(entrega_id):
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
 
-    # Posição com espaçamento para não encostar no texto acima
     table_y = y_after_termo - 40 - (len(tabela_dados) * 18)
-
     table.wrapOn(pdf, width, height)
     table.drawOn(pdf, 40, table_y)
 
@@ -1116,8 +1238,7 @@ def pdf_movimentacao(entrega_id):
     # ======================= RODAPÉ =======================
     pdf.setFont("Helvetica-Oblique", 8)
     pdf.setFillColorRGB(0.5, 0.5, 0.5)
-    pdf.drawCentredString(
-        width / 2, 35,
+    pdf.drawCentredString(width / 2, 35,
         "Documento gerado automaticamente pelo Sistema de Controle de EPI – AdaptLink"
     )
 
@@ -1131,6 +1252,7 @@ def pdf_movimentacao(entrega_id):
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = f'inline; filename=movimentacao_{entrega_id}.pdf'
     return response
+
 
 # ============================
 # FUNCIONÁRIOS / LOGS / USUÁRIOS

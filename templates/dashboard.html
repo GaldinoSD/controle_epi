@@ -1,62 +1,72 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2 class="text-2xl font-semibold mb-8 flex items-center justify-between text-gray-700">
+<div class="max-w-7xl mx-auto">
 
-  <!-- ESQUERDA -->
-  <span class="flex items-center gap-2">
-    <i class="fas fa-tachometer-alt text-blue-600"></i>
-    Painel de Controle
-  </span>
+  <!-- TÍTULO + FILTRO -->
+  <h2 class="text-2xl font-semibold mb-8 flex items-center justify-between text-gray-700">
 
-  <!-- ================= FILTRO DE PERÍODO ================= -->
-  <form method="get" class="flex items-center gap-3">
+    <!-- ESQUERDA -->
+    <span class="flex items-center gap-2">
+      <i class="fas fa-tachometer-alt text-blue-600"></i>
+      Painel de Controle
+    </span>
 
-    <!-- Campo visual (SEM NAME!) -->
-    <input type="text" id="periodo"
-           placeholder="Filtrar período"
-           class="border border-gray-300 rounded-lg px-3 py-1.5 w-52 text-sm focus:ring focus:ring-blue-300">
+    <!-- ================= FILTRO DE PERÍODO ================= -->
+    <form method="get" class="flex items-center gap-3 bg-white/80 px-4 py-2 rounded-xl shadow-sm border border-gray-200">
 
-    <!-- Campos reais enviados ao backend -->
-    <input type="hidden" id="data_inicio" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
-    <input type="hidden" id="data_fim" name="data_fim" value="{{ request.args.get('data_fim','') }}">
+      <!-- Campo visual (SEM NAME!) -->
+      <input
+        type="text"
+        id="periodo"
+        placeholder="Filtrar período"
+        class="border border-gray-300 rounded-lg px-3 py-1.5 w-52 text-sm focus:ring focus:ring-blue-300 focus:outline-none text-gray-700"
+      />
 
-    <button type="submit"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm shadow">
-      <i class="fas fa-filter mr-1"></i> Aplicar
-    </button>
+      <!-- Campos reais enviados ao backend -->
+      <input type="hidden" id="data_inicio" name="data_inicio" value="{{ request.args.get('data_inicio','') }}">
+      <input type="hidden" id="data_fim" name="data_fim" value="{{ request.args.get('data_fim','') }}">
 
-    {% if request.args.get('data_inicio') %}
-    <a href="/dashboard"
-       class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1.5 rounded-lg text-sm shadow">
-      Limpar
-    </a>
-    {% endif %}
-  </form>
+      <button
+        type="submit"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm shadow flex items-center gap-1"
+      >
+        <i class="fas fa-filter"></i>
+        <span>Aplicar</span>
+      </button>
 
-</h2>
+      {% if request.args.get('data_inicio') %}
+      <a
+        href="/dashboard"
+        class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg text-sm shadow flex items-center gap-1"
+      >
+        <i class="fas fa-times"></i>
+        <span>Limpar</span>
+      </a>
+      {% endif %}
+    </form>
+  </h2>
 
-<!-- ===================== MENSAGEM DE FILTRO ===================== -->
-{% if request.args.get('data_inicio') and request.args.get('data_fim') %}
-<div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg mb-6 flex items-center justify-between">
-  <span>
-    <i class="fas fa-info-circle mr-2"></i>
-    Filtro aplicado:
-    <strong>{{ request.args.get('data_inicio') }}</strong>
-    até
-    <strong>{{ request.args.get('data_fim') }}</strong>
-  </span>
+  {% if request.args.get('data_inicio') and request.args.get('data_fim') %}
+  <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg mb-6 flex items-center justify-between">
+    <span>
+      <i class="fas fa-info-circle mr-2"></i>
+      Filtro aplicado:
+      <strong>{{ request.args.get('data_inicio') }}</strong>
+      até
+      <strong>{{ request.args.get('data_fim') }}</strong>
+    </span>
 
-  <a href="/dashboard" class="text-blue-700 hover:text-blue-900 font-semibold">Remover filtro</a>
-</div>
-{% endif %}
+    <a href="/dashboard" class="text-blue-700 hover:text-blue-900 font-semibold">Remover filtro</a>
+  </div>
+  {% endif %}
 
-<!-- ===================== LITEPICKER ===================== -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
-<script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+  <!-- ===================== LITEPICKER ===================== -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
 
-<script>
-  new Litepicker({
+  <script>
+    new Litepicker({
       element: document.getElementById('periodo'),
       singleMode: false,
       numberOfMonths: 2,
@@ -65,214 +75,304 @@
       lang: 'pt-BR',
       autoApply: true,
       setup: (picker) => {
-          picker.on('selected', (start, end) => {
-              document.getElementById('data_inicio').value = start.format('YYYY-MM-DD');
-              document.getElementById('data_fim').value = end.format('YYYY-MM-DD');
-          });
+        picker.on('selected', (start, end) => {
+          document.getElementById('data_inicio').value = start.format('YYYY-MM-DD');
+          document.getElementById('data_fim').value = end.format('YYYY-MM-DD');
+        });
       }
-  });
-</script>
+    });
+  </script>
 
+  <!-- ===================== CARDS RESUMO ===================== -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
 
-
-<!-- ===================== CARDS RESUMO ===================== -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-
-  <!-- CARD EPIs -->
-  <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
-    <div class="flex justify-between items-center">
-      <h3 class="text-xs text-gray-500 uppercase tracking-wide">Total de EPIs</h3>
-      <i class="fas fa-hard-hat text-blue-500 text-2xl"></i>
+    <!-- CARD EPIs -->
+    <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition transform">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs text-gray-500 uppercase tracking-wide">Total de EPIs</h3>
+        <div class="p-2 rounded-xl bg-blue-50">
+          <i class="fas fa-hard-hat text-blue-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-bold text-gray-800 mt-3 count-up" data-value="{{ total_epis }}">0</p>
+      <p class="text-xs text-gray-500 mt-1">Itens cadastrados em estoque</p>
     </div>
-    <p class="text-3xl font-bold text-gray-800 mt-2 count-up" data-value="{{ total_epis }}">0</p>
+
+    <!-- CARD ENTREGAS -->
+    <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition transform">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs text-gray-500 uppercase tracking-wide">Entregas Realizadas</h3>
+        <div class="p-2 rounded-xl bg-purple-50">
+          <i class="fas fa-box-open text-purple-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-bold text-gray-800 mt-3 count-up" data-value="{{ total_entregas }}">0</p>
+      <p class="text-xs text-gray-500 mt-1">Histórico total de entregas</p>
+    </div>
+
+    <!-- CARD FUNCIONÁRIOS -->
+    <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition transform">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs text-gray-500 uppercase tracking-wide">Colaboradores Ativos</h3>
+        <div class="p-2 rounded-xl bg-green-50">
+          <i class="fas fa-users text-green-600 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-bold text-gray-800 mt-3 count-up" data-value="{{ total_funcionarios }}">0</p>
+      <p class="text-xs text-gray-500 mt-1">Funcionários com cadastro ativo</p>
+    </div>
+
+    <!-- CARD CUSTO TOTAL -->
+    <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition transform">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs text-gray-500 uppercase tracking-wide">Custo Total em EPIs (Mês)</h3>
+        <div class="p-2 rounded-xl bg-amber-50">
+          <i class="fas fa-coins text-amber-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-bold text-gray-800 mt-3">
+        R$ <span class="count-up" data-value="{{ custo_mes or 0 }}">0</span>
+      </p>
+      <p class="text-xs text-gray-500 mt-1">Baseado nas entregas do período</p>
+    </div>
   </div>
 
-  <!-- CARD ENTREGAS -->
-  <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
-    <div class="flex justify-between items-center">
-      <h3 class="text-xs text-gray-500 uppercase tracking-wide">Entregas Realizadas</h3>
-      <i class="fas fa-box-open text-purple-500 text-2xl"></i>
+  <!-- ===================== NOVOS CARDS GERENCIAIS ===================== -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+
+    <div class="p-5 bg-white border border-red-100 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition transform">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs text-red-600 uppercase tracking-wide">Estoque Crítico</h3>
+        <div class="p-2 rounded-xl bg-red-50">
+          <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-bold text-red-700 mt-3 count-up" data-value="{{ total_criticos }}">0</p>
+      <p class="text-xs text-red-500 mt-1">Itens abaixo do mínimo definido</p>
     </div>
-    <p class="text-3xl font-bold text-gray-800 mt-2 count-up" data-value="{{ total_entregas }}">0</p>
+
+    <div class="p-5 bg-white border border-rose-100 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition transform">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs text-rose-600 uppercase tracking-wide">EPIs Vencidos</h3>
+        <div class="p-2 rounded-xl bg-rose-50">
+          <i class="fas fa-times-circle text-rose-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-bold text-rose-700 mt-3 count-up" data-value="{{ total_vencidos }}">0</p>
+      <p class="text-xs text-rose-500 mt-1">Itens com CA vencido</p>
+    </div>
+
+    <div class="p-5 bg-white border border-blue-100 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition transform">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs text-blue-600 uppercase tracking-wide">Entregas no Mês</h3>
+        <div class="p-2 rounded-xl bg-blue-50">
+          <i class="fas fa-calendar-week text-blue-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-bold text-blue-700 mt-3 count-up" data-value="{{ entregas_mes }}">0</p>
+      <p class="text-xs text-blue-500 mt-1">Movimentações recentes</p>
+    </div>
+
+    <div class="p-5 bg-white border border-yellow-100 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition transform">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs text-yellow-600 uppercase tracking-wide">Pendências de EPI</h3>
+        <div class="p-2 rounded-xl bg-yellow-50">
+          <i class="fas fa-file-alt text-yellow-500 text-xl"></i>
+        </div>
+      </div>
+      <p class="text-3xl font-bold text-yellow-700 mt-3 count-up" data-value="{{ pendencias }}">0</p>
+      <p class="text-xs text-yellow-500 mt-1">Entregas a regularizar/assinar</p>
+    </div>
+
   </div>
 
-  <!-- CARD FUNCIONÁRIOS -->
-  <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
-    <div class="flex justify-between items-center">
-      <h3 class="text-xs text-gray-500 uppercase tracking-wide">Colaboradores Ativos</h3>
-      <i class="fas fa-users text-green-600 text-2xl"></i>
+  <!-- ===================== GRÁFICOS ===================== -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-700 flex items-center">
+          <i class="fas fa-chart-pie text-blue-600 mr-2"></i> EPIs por Tipo
+        </h3>
+      </div>
+      <canvas id="chartEpiTipo" height="200"></canvas>
     </div>
-    <p class="text-3xl font-bold text-gray-800 mt-2 count-up" data-value="{{ total_funcionarios }}">0</p>
+
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-700 flex items-center">
+          <i class="fas fa-chart-bar text-purple-600 mr-2"></i> Entregas por Colaborador
+        </h3>
+      </div>
+      <canvas id="chartEntregasColab" height="200"></canvas>
+    </div>
+
   </div>
 
-  <!-- CARD USUÁRIOS -->
-  <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
-    <div class="flex justify-between items-center">
-      <h3 class="text-xs text-gray-500 uppercase tracking-wide">Usuários do Sistema</h3>
-      <i class="fas fa-user-shield text-amber-500 text-2xl"></i>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-700 flex items-center">
+          <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i> EPIs em Estoque Crítico
+        </h3>
+      </div>
+      <canvas id="chartCriticos" height="200"></canvas>
     </div>
-    <p class="text-3xl font-bold text-gray-800 mt-2 count-up" data-value="{{ total_usuarios }}">0</p>
+
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-700 flex items-center">
+          <i class="fas fa-fire text-yellow-600 mr-2"></i> EPIs Mais Entregues (Top 5)
+        </h3>
+      </div>
+      <canvas id="chartEpiMaisUsados" height="200"></canvas>
+    </div>
+
   </div>
+
 </div>
-
-
-
-<!-- ===================== NOVOS CARDS GERENCIAIS ===================== -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-
-  <div class="p-5 bg-white border border-red-200 rounded-xl shadow-sm hover:shadow-md transition">
-    <div class="flex justify-between items-center">
-      <h3 class="text-xs text-red-600 uppercase tracking-wide">Estoque Crítico</h3>
-      <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
-    </div>
-    <p class="text-3xl font-bold text-red-700 mt-2 count-up" data-value="{{ total_criticos }}">0</p>
-  </div>
-
-  <div class="p-5 bg-white border border-rose-200 rounded-xl shadow-sm hover:shadow-md transition">
-    <div class="flex justify-between items-center">
-      <h3 class="text-xs text-rose-600 uppercase tracking-wide">EPIs Vencidos</h3>
-      <i class="fas fa-times-circle text-rose-500 text-2xl"></i>
-    </div>
-    <p class="text-3xl font-bold text-rose-700 mt-2 count-up" data-value="{{ total_vencidos }}">0</p>
-  </div>
-
-  <div class="p-5 bg-white border border-blue-200 rounded-xl shadow-sm hover:shadow-md transition">
-    <div class="flex justify-between items-center">
-      <h3 class="text-xs text-blue-600 uppercase tracking-wide">Entregas no Mês</h3>
-      <i class="fas fa-calendar-week text-blue-500 text-2xl"></i>
-    </div>
-    <p class="text-3xl font-bold text-blue-700 mt-2 count-up" data-value="{{ entregas_mes }}">0</p>
-  </div>
-
-  <div class="p-5 bg-white border border-yellow-200 rounded-xl shadow-sm hover:shadow-md transition">
-    <div class="flex justify-between items-center">
-      <h3 class="text-xs text-yellow-600 uppercase tracking-wide">Pendências de EPI</h3>
-      <i class="fas fa-file-alt text-yellow-500 text-2xl"></i>
-    </div>
-    <p class="text-3xl font-bold text-yellow-700 mt-2 count-up" data-value="{{ pendencias }}">0</p>
-  </div>
-
-</div>
-
-
-
-<!-- ===================== GRÁFICOS ===================== -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-
-  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-    <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center">
-      <i class="fas fa-chart-pie text-blue-600 mr-2"></i> EPIs por Tipo
-    </h3>
-    <canvas id="chartEpiTipo"></canvas>
-  </div>
-
-  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-    <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center">
-      <i class="fas fa-chart-bar text-purple-600 mr-2"></i> Entregas por Colaborador
-    </h3>
-    <canvas id="chartEntregasColab"></canvas>
-  </div>
-
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-
-  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-    <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center">
-      <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i> EPIs em Estoque Crítico
-    </h3>
-    <canvas id="chartCriticos"></canvas>
-  </div>
-
-  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-    <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center">
-      <i class="fas fa-fire text-yellow-600 mr-2"></i> EPIs Mais Entregues (Top 5)
-    </h3>
-    <canvas id="chartEpiMaisUsados"></canvas>
-  </div>
-
-</div>
-
 
 <!-- ===================== GRÁFICOS (JS) ===================== -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
 <script>
-const tiposEpi = {{ tipos_epi | safe }};
-const qtdEpi = {{ qtd_epi | safe }};
-const nomesColabs = {{ nomes_colabs | safe }};
-const qtdEntregas = {{ qtd_entregas | safe }};
-const nomesCriticos = {{ nomes_criticos | safe }};
-const qtdCriticos = {{ qtd_criticos | safe }};
-const nomesEpiMaisUsados = {{ nomes_epi_mais_usados | safe }};
-const qtdEpiMaisUsados = {{ qtd_epi_mais_usados | safe }};
+  const tiposEpi = {{ tipos_epi | safe }};
+  const qtdEpi = {{ qtd_epi | safe }};
+  const nomesColabs = {{ nomes_colabs | safe }};
+  const qtdEntregas = {{ qtd_entregas | safe }};
+  const nomesCriticos = {{ nomes_criticos | safe }};
+  const qtdCriticos = {{ qtd_criticos | safe }};
+  const nomesEpiMaisUsados = {{ nomes_epi_mais_usados | safe }};
+  const qtdEpiMaisUsados = {{ qtd_epi_mais_usados | safe }};
 
-/* EPIs por tipo */
-new Chart(document.getElementById('chartEpiTipo'), {
-  type: 'doughnut',
-  data: {
-    labels: tiposEpi,
-    datasets: [{
-      data: qtdEpi,
-      backgroundColor: ['#3b82f6','#6366f1','#f59e0b','#ef4444','#10b981'],
-      borderWidth: 0
-    }]
-  }
-});
+  Chart.register(ChartDataLabels);
 
-/* Entregas por colaborador */
-new Chart(document.getElementById('chartEntregasColab'), {
-  type: 'bar',
-  data: {
-    labels: nomesColabs,
-    datasets: [{
-      data: qtdEntregas,
-      backgroundColor: '#6366f1',
-      borderRadius: 6
-    }]
-  },
-  options: {
-    indexAxis: 'y'
-  }
-});
+  /* EPIs por tipo */
+  new Chart(document.getElementById('chartEpiTipo'), {
+    type: 'doughnut',
+    data: {
+      labels: tiposEpi,
+      datasets: [{
+        data: qtdEpi,
+        backgroundColor: ['#3b82f6','#6366f1','#f59e0b','#ef4444','#10b981','#8b5cf6','#ec4899'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, font: { size: 11 }}
+        },
+        datalabels: {
+          color: '#fff',
+          formatter: (value, ctx) => {
+            const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+            if (!total) return '';
+            const pct = ((value / total) * 100).toFixed(0);
+            return value + ' (' + pct + '%)';
+          },
+          font: { weight: 'bold', size: 10 }
+        }
+      },
+      cutout: '55%'
+    }
+  });
 
-/* Estoque crítico */
-new Chart(document.getElementById('chartCriticos'), {
-  type: 'bar',
-  data: {
-    labels: nomesCriticos,
-    datasets: [{
-      data: qtdCriticos,
-      backgroundColor: '#ef4444',
-      borderRadius: 6
-    }]
-  }
-});
+  /* Entregas por colaborador */
+  new Chart(document.getElementById('chartEntregasColab'), {
+    type: 'bar',
+    data: {
+      labels: nomesColabs,
+      datasets: [{
+        data: qtdEntregas,
+        backgroundColor: '#6366f1',
+        borderRadius: 8,
+        maxBarThickness: 32
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end',
+          align: 'right',
+          color: '#374151',
+          formatter: (v) => v,
+          font: { size: 11, weight: 'bold' }
+        }
+      }
+    }
+  });
 
-/* Mais usados */
-new Chart(document.getElementById('chartEpiMaisUsados'), {
-  type: 'bar',
-  data: {
-    labels: nomesEpiMaisUsados,
-    datasets: [{
-      data: qtdEpiMaisUsados,
-      backgroundColor: '#f59e0b',
-      borderRadius: 6
-    }]
-  }
-});
+  /* Estoque crítico */
+  new Chart(document.getElementById('chartCriticos'), {
+    type: 'bar',
+    data: {
+      labels: nomesCriticos,
+      datasets: [{
+        data: qtdCriticos,
+        backgroundColor: '#ef4444',
+        borderRadius: 8
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end',
+          align: 'end',
+          color: '#991b1b',
+          formatter: (v) => v,
+          font: { size: 11, weight: 'bold' }
+        }
+      }
+    }
+  });
 
-/* Contadores animados */
-document.querySelectorAll('.count-up').forEach(el => {
-  const final = +el.dataset.value;
-  let count = 0;
-  const step = Math.ceil(final / 30);
-  const interval = setInterval(() => {
-    count += step;
-    el.textContent = count >= final ? final : count;
-    if (count >= final) clearInterval(interval);
-  }, 30);
-});
+  /* Mais usados */
+  new Chart(document.getElementById('chartEpiMaisUsados'), {
+    type: 'bar',
+    data: {
+      labels: nomesEpiMaisUsados,
+      datasets: [{
+        data: qtdEpiMaisUsados,
+        backgroundColor: '#f59e0b',
+        borderRadius: 8
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end',
+          align: 'end',
+          color: '#92400e',
+          formatter: (v) => v,
+          font: { size: 11, weight: 'bold' }
+        }
+      }
+    }
+  });
+
+  /* Contadores animados */
+  document.querySelectorAll('.count-up').forEach(el => {
+    const final = +el.dataset.value;
+    let count = 0;
+    const step = Math.max(1, Math.ceil(final / 30));
+    const interval = setInterval(() => {
+      count += step;
+      if (count >= final) {
+        el.textContent = final;
+        clearInterval(interval);
+      } else {
+        el.textContent = count;
+      }
+    }, 30);
+  });
 </script>
 
 {% endblock %}
