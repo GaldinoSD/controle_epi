@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- 🧠 CABEÇALHO + FILTRO -->
+<!-- ===================== CABEÇALHO + FILTRO ===================== -->
 <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-5">
 
   <!-- TÍTULO -->
@@ -10,9 +10,10 @@
     <h2 class="text-3xl font-semibold text-gray-800">Cadastro de Funcionários</h2>
   </div>
 
-  <!-- FILTRO + BOTÃO NOVO -->
+  <!-- BOTÕES LADO DIREITO -->
   <div class="flex items-center gap-4">
 
+    <!-- FORM FILTRO -->
     <form method="GET" class="flex items-center gap-2">
 
       <input type="text" id="periodo" name="periodo"
@@ -30,11 +31,66 @@
 
     </form>
 
+    <!-- BOTÃO NOVO FUNCIONÁRIO -->
     <button onclick="abrirModalID('modalCadastro')"
       class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-2 font-semibold text-sm shadow-sm transition-all flex items-center gap-2">
       <i class="fas fa-user-plus"></i> Novo Funcionário
     </button>
 
+    <!-- ===================== BOTÃO TEMA DOS CARDS ===================== -->
+    <div class="relative">
+      <button onclick="toggleTemaMenu()"
+        class="px-4 py-2 text-gray-700 border border-gray-400 hover:bg-gray-100 rounded-lg font-medium text-sm flex items-center gap-2">
+        <i class="fas fa-palette"></i> Tema dos Cards ▾
+      </button>
+
+      <!-- MENU COM TODAS AS CORES JUNTAS -->
+      <div id="menuTema"
+           class="hidden absolute right-0 mt-2 w-72 bg-white border border-gray-300 rounded-xl shadow-lg z-50 p-4">
+
+        <p class="text-xs text-gray-500 mb-2 font-semibold">Selecione um tema:</p>
+
+        <div class="grid grid-cols-6 gap-3">
+
+          <!-- ORIGINAIS -->
+          <div class="w-6 h-6 rounded-full bg-blue-600 cursor-pointer" onclick="mudarTemaCard('azul')"></div>
+          <div class="w-6 h-6 rounded-full bg-red-600 cursor-pointer" onclick="mudarTemaCard('vermelho')"></div>
+          <div class="w-6 h-6 rounded-full bg-green-600 cursor-pointer" onclick="mudarTemaCard('verde')"></div>
+          <div class="w-6 h-6 rounded-full bg-purple-600 cursor-pointer" onclick="mudarTemaCard('roxo')"></div>
+          <div class="w-6 h-6 rounded-full bg-yellow-400 cursor-pointer" onclick="mudarTemaCard('amarelo')"></div>
+          <div class="w-6 h-6 rounded-full bg-orange-500 cursor-pointer" onclick="mudarTemaCard('laranja')"></div>
+          <div class="w-6 h-6 rounded-full bg-gray-900 cursor-pointer" onclick="mudarTemaCard('preto')"></div>
+          <div class="w-6 h-6 rounded-full bg-gray-400 cursor-pointer" onclick="mudarTemaCard('branco')"></div>
+          <div class="w-6 h-6 rounded-full bg-amber-800 cursor-pointer" onclick="mudarTemaCard('marrom')"></div>
+
+          <!-- VIBRANTES -->
+          <div class="w-6 h-6 rounded-full bg-pink-500 cursor-pointer" onclick="mudarTemaCard('pink')"></div>
+          <div class="w-6 h-6 rounded-full bg-pink-600 cursor-pointer" onclick="mudarTemaCard('hotpink')"></div>
+          <div class="w-6 h-6 rounded-full bg-cyan-400 cursor-pointer" onclick="mudarTemaCard('cyan')"></div>
+          <div class="w-6 h-6 rounded-full bg-teal-500 cursor-pointer" onclick="mudarTemaCard('teal')"></div>
+          <div class="w-6 h-6 rounded-full bg-emerald-300 cursor-pointer" onclick="mudarTemaCard('mint')"></div>
+          <div class="w-6 h-6 rounded-full bg-orange-400 cursor-pointer" onclick="mudarTemaCard('laranjaNeon')"></div>
+          <div class="w-6 h-6 rounded-full bg-lime-400 cursor-pointer" onclick="mudarTemaCard('verdeNeon')"></div>
+          <div class="w-6 h-6 rounded-full bg-fuchsia-500 cursor-pointer" onclick="mudarTemaCard('roxoNeon')"></div>
+
+          <!-- PREMIUM -->
+          <div class="w-6 h-6 rounded-full" style="background:#FFD700" onclick="mudarTemaCard('gold')"></div>
+          <div class="w-6 h-6 rounded-full bg-gray-300 cursor-pointer" onclick="mudarTemaCard('silver')"></div>
+          <div class="w-6 h-6 rounded-full bg-amber-700 cursor-pointer" onclick="mudarTemaCard('bronze')"></div>
+          <div class="w-6 h-6 rounded-full bg-rose-200 cursor-pointer" onclick="mudarTemaCard('champagne')"></div>
+
+          <!-- MODERNAS -->
+          <div class="w-6 h-6 rounded-full bg-indigo-600 cursor-pointer" onclick="mudarTemaCard('indigo')"></div>
+          <div class="w-6 h-6 rounded-full bg-blue-900 cursor-pointer" onclick="mudarTemaCard('navy')"></div>
+          <div class="w-6 h-6 rounded-full" style="background:#007FFF" onclick="mudarTemaCard('azure')"></div>
+          <div class="w-6 h-6 rounded-full bg-fuchsia-700 cursor-pointer" onclick="mudarTemaCard('magenta')"></div>
+          <div class="w-6 h-6 rounded-full bg-teal-300 cursor-pointer" onclick="mudarTemaCard('aqua')"></div>
+          <div class="w-6 h-6 rounded-full bg-red-900 cursor-pointer" onclick="mudarTemaCard('burgundy')"></div>
+          <div class="w-6 h-6 rounded-full bg-lime-800 cursor-pointer" onclick="mudarTemaCard('olive')"></div>
+
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -57,28 +113,8 @@
 </div>
 {% endif %}
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
-<script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
 
-<script>
-new Litepicker({
-    element: document.getElementById('periodo'),
-    singleMode: false,
-    numberOfMonths: 2,
-    numberOfColumns: 2,
-    format: 'DD/MM/YYYY',
-    lang: 'pt-BR',
-    autoApply: true,
-    setup: (picker) => {
-        picker.on('selected', (d1, d2) => {
-            document.getElementById('data_inicio').value = d1.format('YYYY-MM-DD');
-            document.getElementById('data_fim').value = d2.format('YYYY-MM-DD');
-        });
-    }
-});
-</script>
-
-<!-- 👥 LISTA DE FUNCIONÁRIOS -->
+<!-- ===================== LISTA DE FUNCIONÁRIOS ===================== -->
 <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
   <div class="flex justify-between items-center mb-6">
     <h3 class="text-2xl font-semibold text-gray-800 flex items-center gap-2">
@@ -91,12 +127,12 @@ new Litepicker({
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 
     {% for f in funcionarios %}
-    <div class="relative bg-white border border-blue-300 rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden w-full max-w-xs mx-auto">
+    <div class="relative bg-white border card-borda rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden w-full max-w-xs mx-auto">
 
-      <!-- TOPO DO CRACHÁ -->
-      <div class="bg-gradient-to-b from-blue-600 to-blue-800 text-white py-6 flex flex-col items-center gap-1 shadow">
+      <!-- ===================== TOPO DO CARD ===================== -->
+      <div class="card-gradiente text-white py-6 flex flex-col items-center gap-1 shadow">
 
-          <!-- 🔵 AVATAR AUTOMÁTICO COM INICIAIS -->
+          <!-- AVATAR -->
           <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center shadow-md text-3xl font-bold uppercase select-none">
             {{ f.nome.split()[0][0] }}{{ f.nome.split()[-1][0] }}
           </div>
@@ -110,18 +146,14 @@ new Litepicker({
 
       </div>
 
-      <!-- CORPO -->
+      <!-- ===================== CORPO DO CARD ===================== -->
       <div class="p-5 text-gray-700 text-sm space-y-4">
 
-        <div class="border-l-4 border-blue-600 pl-3">
+        <div class="border-l-4 card-borda-adm pl-3">
           <p class="text-xs text-gray-500 font-semibold">Admissão</p>
           <p class="font-medium text-gray-800">
             {% if f.data_admissao %}
-              {% if f.data_admissao.__class__.__name__ == 'datetime' %}
-                {{ f.data_admissao.strftime('%d/%m/%Y') }}
-              {% else %}
-                {{ f.data_admissao }}
-              {% endif %}
+              {{ f.data_admissao.strftime('%d/%m/%Y') if f.data_admissao.__class__.__name__=='datetime' else f.data_admissao }}
             {% else %}-{% endif %}
           </p>
         </div>
@@ -158,7 +190,7 @@ new Litepicker({
       {% endif %}
     </div>
 
-    <!-- RODAPÉ -->
+    <!-- ===================== RODAPÉ CARD ===================== -->
     <div class="flex justify-between items-center px-5 py-3 border-t border-gray-200 bg-gray-50">
 
       <button onclick="abrirModalID('modalEditar{{ f.id }}')"
@@ -171,7 +203,7 @@ new Litepicker({
                           data_fim=request.args.get('data_fim')) }}"
         target="_blank"
         class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
-        <i class="fas fa-file-pdf"></i> Ficha de EPI
+        <i class="fas fa-file-pdf"></i> Ficha EPI
       </a>
 
       <a href="{{ url_for('deletar_funcionario', id=f.id) }}"
@@ -184,7 +216,7 @@ new Litepicker({
 
   </div>
 
-  <!-- MODAL EDITAR (inalterado) -->
+  <!-- ===================== MODAL EDITAR ===================== -->
   <div id="modalEditar{{ f.id }}" class="modal fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center z-50 backdrop-blur-sm">
 
     <div class="bg-white border border-gray-200 rounded-2xl shadow-xl p-8 w-full max-w-3xl animate-fadeIn"
@@ -257,7 +289,7 @@ new Litepicker({
   {% endif %}
 </div>
 
-<!-- MODAL CADASTRO -->
+<!-- ===================== MODAL CADASTRO ===================== -->
 <div id="modalCadastro"
      class="modal fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center z-50 backdrop-blur-sm">
 
@@ -317,35 +349,124 @@ new Litepicker({
   </div>
 </div>
 
+<!-- ===================== JAVASCRIPT ===================== -->
 <script>
+
+/* ===================== MODAIS ===================== */
 function abrirModalID(id){
   const el = document.getElementById(id);
   if(el){ el.classList.remove("hidden"); el.classList.add("flex"); }
 }
+
 function fecharModalID(id){
   const el = document.getElementById(id);
   if(el){ el.classList.add("hidden"); el.classList.remove("flex"); }
 }
-window.addEventListener("click", function(e){
-  document.querySelectorAll(".modal").forEach(modal=>{
-    if(e.target === modal){
-      modal.classList.add("hidden");
-      modal.classList.remove("flex");
-    }
-  });
-});
+
 function toggleSenha(id){
   const campo = document.getElementById("senha_"+id);
   campo.type = campo.type === "password" ? "text" : "password";
 }
+
+/* ===================== MENU TEMA ===================== */
+function toggleTemaMenu(){
+  document.getElementById("menuTema").classList.toggle("hidden");
+}
+
+document.addEventListener("click", function(e){
+  if(!e.target.closest("#menuTema") && !e.target.closest("[onclick='toggleTemaMenu()']")){
+    document.getElementById("menuTema").classList.add("hidden");
+  }
+});
+
+/* ===================== TEMA DOS CARDS — 26 TEMAS ===================== */
+function mudarTemaCard(cor){
+  const temas = {
+
+    azul:    ["#2563eb", "#1e40af", "#2563eb"],
+    vermelho:["#dc2626", "#991b1b", "#dc2626"],
+    verde:   ["#16a34a", "#166534", "#16a34a"],
+    roxo:    ["#7c3aed", "#4c1d95", "#7c3aed"],
+    amarelo: ["#facc15", "#ca8a04", "#facc15"],
+    laranja: ["#fb923c", "#ea580c", "#fb923c"],
+    preto:   ["#111827", "#000000", "#111827"],
+    branco:  ["#6b7280", "#9ca3af", "#6b7280"],
+    marrom:  ["#92400e", "#78350f", "#92400e"],
+
+    pink:         ["#ec4899", "#db2777", "#ec4899"],
+    hotpink:      ["#e11d48", "#be123c", "#e11d48"],
+    cyan:         ["#22d3ee", "#0891b2", "#22d3ee"],
+    teal:         ["#14b8a6", "#0f766e", "#14b8a6"],
+    mint:         ["#6ee7b7", "#34d399", "#6ee7b7"],
+    laranjaNeon:  ["#fb923c", "#ea580c", "#fb923c"],
+    verdeNeon:    ["#84cc16", "#4d7c0f", "#84cc16"],
+    roxoNeon:     ["#a21caf", "#86198f", "#a21caf"],
+
+    gold:       ["#FFD700", "#DAA520", "#FFD700"],
+    silver:     ["#d1d5db", "#9ca3af", "#d1d5db"],
+    bronze:     ["#b45309", "#92400e", "#b45309"],
+    champagne:  ["#f5e7d3", "#e7d3b8", "#f5e7d3"],
+
+    indigo:     ["#4f46e5", "#3730a3", "#4f46e5"],
+    navy:       ["#1e3a8a", "#1e40af", "#1e3a8a"],
+    azure:      ["#007FFF", "#005fcc", "#007FFF"],
+    magenta:    ["#c026d3", "#86198f", "#c026d3"],
+    aqua:       ["#5eead4", "#2dd4bf", "#5eead4"],
+    burgundy:   ["#7f1d1d", "#581c1c", "#7f1d1d"],
+    olive:      ["#4d7c0f", "#3f6212", "#4d7c0f"]
+  };
+
+  const [grad1, grad2, borda] = temas[cor];
+  const root = document.documentElement;
+
+  root.style.setProperty("--card-grad1", grad1);
+  root.style.setProperty("--card-grad2", grad2);
+  root.style.setProperty("--card-borda", borda);
+
+  localStorage.setItem("tema_cards", cor);
+}
+
+/* ===================== CARREGAR TEMA SALVO ===================== */
+document.addEventListener("DOMContentLoaded", function(){
+  const salvo = localStorage.getItem("tema_cards") || "azul";
+  mudarTemaCard(salvo);
+});
+
 </script>
 
+<!-- ===================== CSS DO TEMA ===================== -->
 <style>
+
+:root {
+  --card-grad1: #2563eb;
+  --card-grad2: #1e40af;
+  --card-borda: #2563eb;
+}
+
+/* Gradiente do topo */
+.card-gradiente {
+  background: linear-gradient(to bottom, var(--card-grad1), var(--card-grad2));
+}
+
+/* Borda externa */
+.card-borda {
+  border-color: var(--card-borda) !important;
+}
+
+/* Borda do item admissão */
+.card-borda-adm {
+  border-color: var(--card-borda) !important;
+}
+
+/* Animação */
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
 }
-.animate-fadeIn { animation: fadeIn .25s ease-out forwards; }
+.animate-fadeIn {
+  animation: fadeIn .25s ease-out forwards;
+}
+
 </style>
 
 {% endblock %}
