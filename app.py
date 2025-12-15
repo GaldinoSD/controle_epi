@@ -1472,4 +1472,4 @@ if __name__ == '__main__':
         db.create_all()
         _ensure_table_columns()   # migração automática das novas colunas
         criar_admin_padrao()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
